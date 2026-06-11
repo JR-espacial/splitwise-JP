@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { clearCurrentMemberId, getCurrentMemberId, setCurrentMemberId } from './data/identity'
+import { LocalFirstRepository } from './data/localFirstRepository'
 import { ledgerStore, useLedger } from './data/store'
-import { SupabaseExpenseRepository } from './data/supabaseRepository'
 import { IdentityContext } from './ui/identityContext'
 import { Layout } from './ui/Layout'
 import { BalancesView } from './views/BalancesView'
@@ -15,7 +15,7 @@ export default function App() {
   const [memberId, setMemberId] = useState<string | null>(getCurrentMemberId)
 
   useEffect(() => {
-    ledgerStore.init(new SupabaseExpenseRepository())
+    ledgerStore.init(new LocalFirstRepository())
   }, [])
 
   const identity = useMemo(

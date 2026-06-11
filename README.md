@@ -9,6 +9,7 @@ backend, deploy en Vercel.
 1. **Supabase**: crea un proyecto gratis en [supabase.com](https://supabase.com).
    En el *SQL Editor* ejecuta, en orden:
    - `supabase/migrations/0001_initial_schema.sql`
+   - `supabase/migrations/0002_server_updated_at.sql`
    - `supabase/seed.sql` (edita los nombres de los 4 miembros si quieres)
 
    (O con la CLI: `supabase link --project-ref <ref> && supabase db push`.)
