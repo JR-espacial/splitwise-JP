@@ -15,12 +15,13 @@ import {
   type MemberRow,
   type SettlementRow,
 } from './rows'
-import { supabase } from './supabaseClient'
+import { getSupabase } from './supabaseClient'
 
 const REALTIME_TABLES = ['expenses', 'expense_splits', 'settlements'] as const
 
 export class SupabaseExpenseRepository implements ExpenseRepository {
   async loadSnapshot(): Promise<LedgerSnapshot> {
+    const supabase = getSupabase()
     const groupResult = await supabase.from('groups').select('*').limit(1).single()
     if (groupResult.error) throw groupResult.error
     const group = groupFromRow(groupResult.data as GroupRow)
@@ -44,6 +45,7 @@ export class SupabaseExpenseRepository implements ExpenseRepository {
   }
 
   async upsertExpense(expense: Expense, splits: ExpenseSplit[]): Promise<void> {
+    const supabase = getSupabase()
     const expenseResult = await supabase.from('expenses').upsert(expenseToRow(expense))
     if (expenseResult.error) throw expenseResult.error
 
@@ -61,11 +63,13 @@ export class SupabaseExpenseRepository implements ExpenseRepository {
   }
 
   async upsertSettlement(settlement: Settlement): Promise<void> {
+    const supabase = getSupabase()
     const result = await supabase.from('settlements').upsert(settlementToRow(settlement))
     if (result.error) throw result.error
   }
 
   subscribeToRemoteChanges(onChange: () => void): () => void {
+    const supabase = getSupabase()
     let channel = supabase.channel('ledger-changes')
     for (const table of REALTIME_TABLES) {
       channel = channel.on(

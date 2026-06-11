@@ -1,12 +1,20 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+let client: SupabaseClient | null = null
 
-if (!url || !anonKey) {
-  throw new Error(
-    'Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. Copy .env.example to .env.local and fill in your Supabase project credentials.',
-  )
+/**
+ * Lazy so a missing configuration surfaces as a catchable load error in the
+ * UI instead of crashing the whole bundle at import time.
+ */
+export function getSupabase(): SupabaseClient {
+  if (client) return client
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+  if (!url || !anonKey) {
+    throw new Error(
+      'Faltan VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY (copia .env.example a .env.local).',
+    )
+  }
+  client = createClient(url, anonKey)
+  return client
 }
-
-export const supabase = createClient(url, anonKey)
