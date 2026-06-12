@@ -357,7 +357,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
         <button
           type="submit"
           disabled={!canSave}
-          className="min-h-14 flex-[2] rounded-2xl bg-emerald-600 text-lg font-bold text-white shadow-md active:bg-emerald-700 disabled:bg-slate-300"
+          className="min-h-14 flex-[2] rounded-2xl bg-emerald-600 text-lg font-bold text-white shadow-md transition active:scale-[0.98] active:bg-emerald-700 disabled:bg-slate-300"
         >
           Guardar
         </button>
