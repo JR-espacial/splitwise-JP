@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getDefaultFxRate, getLastCurrency, rememberFxRate, rememberLastCurrency } from '../data/fxDefaults'
+import { getAutoFxRate } from '../data/fxService'
 import type { LedgerSnapshot } from '../data/repository'
 import { ledgerStore } from '../data/store'
 import { formatCents, parseAmountToCents, toBaseCents } from '../domain/money'
@@ -69,6 +70,22 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
       : {},
   )
   const [formError, setFormError] = useState<string | null>(null)
+  // Frozen rates of existing expenses are never auto-updated.
+  const [fxEdited, setFxEdited] = useState(editing !== null)
+  const [fxIsAuto, setFxIsAuto] = useState(false)
+
+  useEffect(() => {
+    if (fxEdited || currency === base) return
+    let cancelled = false
+    void getAutoFxRate(currency).then((rate) => {
+      if (cancelled || rate === null) return
+      setFxRateText(String(rate))
+      setFxIsAuto(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [currency, base, fxEdited])
 
   if (id && !editing) {
     return <p className="py-10 text-center text-slate-500">Gasto no encontrado.</p>
@@ -112,7 +129,11 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
   const selectCurrency = (next: Currency) => {
     setCurrency(next)
-    if (next !== base) setFxRateText(String(getDefaultFxRate(next)))
+    if (next !== base) {
+      setFxRateText(String(getDefaultFxRate(next)))
+      setFxIsAuto(false)
+      if (!editing) setFxEdited(false) // let the daily rate take over again
+    }
   }
 
   const handleSave = () => {
@@ -202,14 +223,19 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
             id="fx-rate"
             inputMode="decimal"
             value={fxRateText}
-            onChange={(e) => setFxRateText(e.target.value.replace(',', '.'))}
+            onChange={(e) => {
+              setFxRateText(e.target.value.replace(',', '.'))
+              setFxEdited(true)
+              setFxIsAuto(false)
+            }}
             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 tabular-nums text-slate-900"
           />
-          {amountCents !== null && fxValid && (
-            <p className="mt-1 text-sm text-slate-500">
-              ≈ {formatCents(toBaseCents(amountCents, fxRate), base)}
-            </p>
-          )}
+          <p className="mt-1 text-sm text-slate-500">
+            {amountCents !== null && fxValid && (
+              <>≈ {formatCents(toBaseCents(amountCents, fxRate), base)} · </>
+            )}
+            {fxIsAuto ? 'tasa del día (BCE), editable' : 'tasa manual'}
+          </p>
         </div>
       )}
 
