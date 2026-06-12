@@ -6,7 +6,9 @@ UI copy is Spanish; code, commits and identifiers are English.
 ## Stack
 
 - **Frontend**: React 18 + Vite + TypeScript (strict) + Tailwind v4, mobile-first (~390px), React Router.
-- **Backend**: Supabase (Postgres + Realtime), anon key with permissive RLS for now. No custom backend.
+- **Backend**: Supabase (Postgres + Realtime + magic-link Auth). RLS restricts
+  the whole ledger to authenticated group members (`is_group_member()`,
+  matched by JWT email — migration 0003). No custom backend.
 - **Deploy**: Vercel (`vercel.json` has the SPA rewrite).
 - **Tests**: Vitest, colocated under `src/domain/__tests__/`.
 
@@ -29,9 +31,12 @@ the single group and its 4 members with fixed UUIDs (idempotent).
   floats for money. User input is parsed with string math
   (`parseAmountToCents`), never `parseFloat(x) * 100`.
 - **Multi-currency**: EUR, CZK, MXN, USD, CHF. Each expense stores its original
-  currency plus `fx_rate_to_base` **frozen at capture time** (manual input,
-  editable default per currency remembered in localStorage). The rate itself is
-  not money, so float multiplication + `Math.round` is fine (`toBaseCents`).
+  currency plus `fx_rate_to_base` **frozen at capture time**. New expenses
+  prefill the ECB daily rate (`fxService`, Frankfurter API, 12h localStorage
+  cache, stale cache offline), falling back to the last manually used rate;
+  always editable, and editing an expense never touches its frozen rate. The
+  rate itself is not money, so float multiplication + `Math.round` is fine
+  (`toBaseCents`).
 - **Split rounding**: equal/subset shares are `floor(amount / n)`; the
   remainder goes to the payer, or to the first participant when the payer is
   not in the subset. Invariant: `sum(share_cents) === amount_cents`, enforced
@@ -80,15 +85,15 @@ free of React and Supabase imports.
   count) shown as a banner in `Layout`.
 - Service worker via `vite-plugin-pwa` (`generateSW`, autoUpdate): the app
   shell opens offline and is installable; data offline comes from Dexie.
-- `src/views/` + `src/ui/` — React. Identity (no real auth yet) is a member id
-  in localStorage.
+- `src/views/` + `src/ui/` — React. Identity = the member whose `email`
+  matches the Supabase session email (magic link, `src/data/auth.ts`); the
+  session persists in localStorage so a signed-in device works offline.
 
 ## Roadmap context
 
-Iterations 1 (online core) and 2 (local-first: Dexie + outbox + service
-worker, incremental pull by `updated_at`, last-write-wins) are done.
-Iteration 3: Supabase magic-link auth + real RLS, automatic FX rates, history
-filters. Don't build ahead, but don't block these either.
+Iterations 1 (online core), 2 (local-first: Dexie + outbox + service worker,
+incremental pull by `updated_at`, last-write-wins) and 3 (magic-link auth +
+real RLS, automatic FX rates, history filters + trip totals) are done.
 
 ## UX ground rules
 
