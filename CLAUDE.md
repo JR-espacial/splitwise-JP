@@ -55,29 +55,40 @@ free of React and Supabase imports.
 - **Soft deletes only**: set `deleted_at`; undo sets it back to null. There is
   deliberately no DELETE policy on `expenses`/`settlements` (database-enforced).
   `expense_splits` are derived rows and are replaced when an expense is edited.
-- `updated_at` is bumped by a Postgres trigger on UPDATE (and set client-side
-  for the optimistic copy).
+- `updated_at` is **server-assigned** by Postgres triggers on INSERT and
+  UPDATE (migrations 0001 + 0002); the client-set value is only an optimistic
+  placeholder. The incremental pull uses it as its cursor, so it must come
+  from a single clock.
 
 ## Architecture
 
 - `src/domain/` — pure money/split/balance/settle logic + types.
-- `src/data/` — `ExpenseRepository` interface (`repository.ts`) and the
-  Supabase implementation. **The UI must only talk to the repository through
-  `ledgerStore`**, never to Supabase directly: iteration 2 swaps in a
-  Dexie/IndexedDB + outbox implementation behind the same interface.
+- `src/data/` — `ExpenseRepository` interface (`repository.ts`) implemented by
+  `LocalFirstRepository`: the UI reads/writes **Dexie/IndexedDB only**
+  (`db.ts`), never the network. **The UI must only talk to the repository
+  through `ledgerStore`.**
+- Sync (`sync.ts` + `remote.ts`): writes are queued in an **outbox**
+  (coalesced per entity id) and pushed to Supabase as idempotent upserts with
+  exponential backoff; pulls are **incremental by `updated_at` cursor** with
+  last-write-wins, except entities with a pending outbox entry, where the
+  local unsent edit wins until pushed. Pulls are triggered by Realtime
+  events, reconnects, the `online` event and `visibilitychange`. First run on
+  a device needs network to bootstrap the group.
 - `ledgerStore` (`src/data/store.ts`) holds an in-memory snapshot, applies
-  writes optimistically, pushes in the background, and refetches (debounced)
-  on Supabase Realtime events; in-flight writes are overlaid on refetched
-  snapshots to avoid flicker.
+  writes optimistically, and refetches (debounced) from Dexie when the sync
+  engine reports changes; it also exposes `SyncStatus` (offline / pending
+  count) shown as a banner in `Layout`.
+- Service worker via `vite-plugin-pwa` (`generateSW`, autoUpdate): the app
+  shell opens offline and is installable; data offline comes from Dexie.
 - `src/views/` + `src/ui/` — React. Identity (no real auth yet) is a member id
   in localStorage.
 
 ## Roadmap context
 
-Iteration 1 (current): online-only core. Iteration 2: local-first with Dexie +
-outbox + service worker (vite-plugin-pwa), incremental pull by `updated_at`,
-last-write-wins. Iteration 3: Supabase magic-link auth + real RLS, automatic FX
-rates, history filters. Don't build ahead, but don't block these either.
+Iterations 1 (online core) and 2 (local-first: Dexie + outbox + service
+worker, incremental pull by `updated_at`, last-write-wins) are done.
+Iteration 3: Supabase magic-link auth + real RLS, automatic FX rates, history
+filters. Don't build ahead, but don't block these either.
 
 ## UX ground rules
 

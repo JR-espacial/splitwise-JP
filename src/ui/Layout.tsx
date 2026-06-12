@@ -8,7 +8,7 @@ const tabClass = ({ isActive }: { isActive: boolean }) =>
   }`
 
 export function Layout() {
-  const { snapshot, writeError } = useLedger()
+  const { snapshot, writeError, sync } = useLedger()
   const { currentMemberId, changeIdentity } = useIdentity()
   const me = snapshot?.members.find((m) => m.id === currentMemberId)
 
@@ -38,6 +38,14 @@ export function Layout() {
           )}
         </button>
       </header>
+
+      {sync && (!sync.online || sync.pendingCount > 0) && (
+        <div role="status" className="bg-amber-500 px-4 py-1.5 text-center text-sm font-semibold text-amber-950">
+          {sync.online
+            ? `Sincronizando ${sync.pendingCount} ${sync.pendingCount === 1 ? 'cambio' : 'cambios'}…`
+            : 'Sin conexión — tus cambios se guardan en este teléfono'}
+        </div>
+      )}
 
       {writeError && (
         <div

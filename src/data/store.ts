@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Expense, ExpenseSplit, Settlement } from '../domain/types'
 import type { ExpenseRepository, LedgerSnapshot } from './repository'
+import type { SyncStatus } from './sync'
 
 export interface LedgerState {
   status: 'loading' | 'error' | 'ready'
@@ -9,6 +10,8 @@ export interface LedgerState {
   loadError: string | null
   /** Last failed write, shown as a dismissible banner. */
   writeError: string | null
+  /** Connectivity / pending-writes info from the repository, if available. */
+  sync: SyncStatus | null
 }
 
 type Listener = () => void
@@ -30,23 +33,29 @@ class LedgerStore {
     snapshot: null,
     loadError: null,
     writeError: null,
+    sync: null,
   }
   private listeners = new Set<Listener>()
   private pendingExpenses = new Map<string, { expense: Expense; splits: ExpenseSplit[] }>()
   private pendingSettlements = new Map<string, Settlement>()
   private refetchTimer: ReturnType<typeof setTimeout> | null = null
   private unsubscribeRemote: (() => void) | null = null
+  private unsubscribeStatus: (() => void) | null = null
 
   init(repository: ExpenseRepository): void {
     if (this.repository) return
     this.repository = repository
     void this.loadInitial()
     this.unsubscribeRemote = repository.subscribeToRemoteChanges(() => this.scheduleRefetch())
+    this.unsubscribeStatus =
+      repository.subscribeToSyncStatus?.((sync) => this.setState({ sync })) ?? null
   }
 
   dispose(): void {
     this.unsubscribeRemote?.()
     this.unsubscribeRemote = null
+    this.unsubscribeStatus?.()
+    this.unsubscribeStatus = null
     this.repository = null
   }
 

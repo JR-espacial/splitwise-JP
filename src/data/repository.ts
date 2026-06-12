@@ -1,5 +1,6 @@
 import type { Expense, ExpenseSplit, Member, Settlement } from '../domain/types'
 import type { Group } from './rows'
+import type { SyncStatus } from './sync'
 
 export interface LedgerSnapshot {
   group: Group
@@ -24,4 +25,6 @@ export interface ExpenseRepository {
   upsertSettlement(settlement: Settlement): Promise<void>
   /** Notifies when other devices change the ledger. Returns unsubscribe. */
   subscribeToRemoteChanges(onChange: () => void): () => void
+  /** Connectivity / pending-writes indicator, when the impl can provide it. */
+  subscribeToSyncStatus?(onStatus: (status: SyncStatus) => void): () => void
 }
