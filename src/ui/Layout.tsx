@@ -20,7 +20,7 @@ export function Layout() {
           type="button"
           onClick={changeIdentity}
           className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-semibold active:bg-emerald-800"
-          aria-label="Cambiar de usuario"
+          aria-label="Cerrar sesión"
         >
           {me ? (
             <>
