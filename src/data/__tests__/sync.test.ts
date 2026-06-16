@@ -19,6 +19,7 @@ const MEMBERS: Member[] = ['a', 'b'].map((id, i) => ({
   groupId: 'g1',
   name: id.toUpperCase(),
   color: '#fff',
+  email: `${id}@example.com`,
   createdAt: `2026-06-01T00:00:0${i}+00:00`,
 }))
 

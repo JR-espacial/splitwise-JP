@@ -26,6 +26,7 @@ export interface MemberRow {
   group_id: string
   name: string
   color: string
+  email: string | null
   created_at: string
 }
 
@@ -73,6 +74,7 @@ export const memberFromRow = (row: MemberRow): Member => ({
   groupId: row.group_id,
   name: row.name,
   color: row.color,
+  email: row.email ?? null,
   createdAt: row.created_at,
 })
 

@@ -3,8 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import type { LedgerSnapshot } from '../data/repository'
 import { ledgerStore } from '../data/store'
 import { formatCents, toBaseCents } from '../domain/money'
+import { computeTripTotals } from '../domain/totals'
 import type { Expense, Settlement } from '../domain/types'
 import { formatShortDate } from '../ui/dates'
+
+type TypeFilter = 'all' | 'expense' | 'settlement'
+
+const filterChip = (active: boolean) =>
+  `min-h-11 shrink-0 rounded-xl border px-3 text-sm font-semibold transition ${
+    active
+      ? 'border-emerald-600 bg-emerald-600 text-white'
+      : 'border-slate-300 bg-white text-slate-700 active:bg-slate-100'
+  }`
 
 type LedgerEntry =
   | { kind: 'expense'; date: string; createdAt: string; expense: Expense }
@@ -22,6 +32,8 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
   const base = group.baseCurrency
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? '—'
 
+  const [payerFilter, setPayerFilter] = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [undoTarget, setUndoTarget] = useState<UndoTarget | null>(null)
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => {
@@ -60,28 +72,89 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
     setUndoTarget(null)
   }
 
+  const visibleExpenses = expenses.filter(
+    (e) =>
+      e.deletedAt === null &&
+      (payerFilter === null || e.paidBy === payerFilter) &&
+      typeFilter !== 'settlement',
+  )
+  const visibleSettlements = settlements.filter(
+    (s) =>
+      s.deletedAt === null &&
+      (payerFilter === null || s.fromMember === payerFilter) &&
+      typeFilter !== 'expense',
+  )
+
   const entries: LedgerEntry[] = [
-    ...expenses
-      .filter((e) => e.deletedAt === null)
-      .map((expense): LedgerEntry => ({
-        kind: 'expense',
-        date: expense.expenseDate,
-        createdAt: expense.createdAt,
-        expense,
-      })),
-    ...settlements
-      .filter((s) => s.deletedAt === null)
-      .map((settlement): LedgerEntry => ({
-        kind: 'settlement',
-        date: settlement.createdAt.slice(0, 10),
-        createdAt: settlement.createdAt,
-        settlement,
-      })),
+    ...visibleExpenses.map((expense): LedgerEntry => ({
+      kind: 'expense',
+      date: expense.expenseDate,
+      createdAt: expense.createdAt,
+      expense,
+    })),
+    ...visibleSettlements.map((settlement): LedgerEntry => ({
+      kind: 'settlement',
+      date: settlement.createdAt.slice(0, 10),
+      createdAt: settlement.createdAt,
+      settlement,
+    })),
   ].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
+
+  const totals = computeTripTotals(visibleExpenses, splits)
 
   return (
     <div className="flex flex-col gap-2">
       <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">Historial</h2>
+
+      <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por persona">
+        <button type="button" onClick={() => setPayerFilter(null)} className={filterChip(payerFilter === null)}>
+          Todos
+        </button>
+        {members.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => setPayerFilter(payerFilter === m.id ? null : m.id)}
+            className={filterChip(payerFilter === m.id)}
+          >
+            {m.name}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2" role="group" aria-label="Filtrar por tipo">
+        {(
+          [
+            ['all', 'Todo'],
+            ['expense', 'Gastos'],
+            ['settlement', 'Pagos'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setTypeFilter(value)}
+            className={filterChip(typeFilter === value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {typeFilter !== 'settlement' && (
+        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <span className="text-sm text-slate-600">
+            {payerFilter === null
+              ? 'Total del viaje'
+              : `Pagado por ${memberName(payerFilter)}`}
+            <span className="block text-xs text-slate-400">
+              {totals.expenseCount} {totals.expenseCount === 1 ? 'gasto' : 'gastos'}
+            </span>
+          </span>
+          <span className="text-lg font-bold tabular-nums text-slate-900">
+            {formatCents(totals.totalBaseCents, base)}
+          </span>
+        </div>
+      )}
 
       {entries.length === 0 && (
         <p className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-slate-500">
@@ -162,7 +235,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
       </ul>
 
       {undoTarget && (
-        <div className="fixed inset-x-0 bottom-24 z-20 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-slate-900 px-4 py-3 text-white shadow-xl">
+        <div className="animate-rise fixed inset-x-0 bottom-24 z-20 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-slate-900 px-4 py-3 text-white shadow-xl">
           <span className="text-sm">
             {undoTarget.kind === 'expense' ? 'Gasto borrado' : 'Pago borrado'}
           </span>

@@ -11,20 +11,28 @@ backend, deploy en Vercel.
    - `supabase/migrations/0001_initial_schema.sql`
    - `supabase/migrations/0002_server_updated_at.sql`
    - `supabase/seed.sql` (edita los nombres de los 4 miembros si quieres)
+   - `supabase/migrations/0003_auth_rls.sql` — **antes de ejecutarla, edita
+     los correos placeholder** con los correos reales de los 4 miembros
 
    (O con la CLI: `supabase link --project-ref <ref> && supabase db push`.)
 
-2. **Variables de entorno**: copia `.env.example` a `.env.local` y pon la URL
+2. **Auth (magic links)**: en el dashboard, *Authentication → Sign In /
+   Providers*, habilita **Email** (sin contraseña basta el enlace mágico). En
+   *Authentication → URL Configuration* pon como *Site URL* tu dominio de
+   Vercel y agrega `http://localhost:5173` a *Redirect URLs* para desarrollo.
+   Solo los correos listados en `members` pueden usar la app (RLS).
+
+3. **Variables de entorno**: copia `.env.example` a `.env.local` y pon la URL
    del proyecto y la *anon key* (Settings → API).
 
-3. **Desarrollo local**:
+4. **Desarrollo local**:
 
    ```sh
    npm install
    npm run dev
    ```
 
-4. **Deploy en Vercel**: importa el repo en [vercel.com](https://vercel.com)
+5. **Deploy en Vercel**: importa el repo en [vercel.com](https://vercel.com)
    (framework: Vite, sin config extra — `vercel.json` ya trae el rewrite de
    SPA) y define `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en
    *Project Settings → Environment Variables*.

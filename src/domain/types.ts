@@ -8,6 +8,8 @@ export interface Member {
   groupId: string
   name: string
   color: string
+  /** Login email (magic link). Null until migration 0003 has run. */
+  email: string | null
   createdAt: string
 }
 

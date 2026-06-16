@@ -20,7 +20,7 @@ export function Layout() {
           type="button"
           onClick={changeIdentity}
           className="flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-semibold active:bg-emerald-800"
-          aria-label="Cambiar de usuario"
+          aria-label="Cerrar sesión"
         >
           {me ? (
             <>
@@ -40,7 +40,7 @@ export function Layout() {
       </header>
 
       {sync && (!sync.online || sync.pendingCount > 0) && (
-        <div role="status" className="bg-amber-500 px-4 py-1.5 text-center text-sm font-semibold text-amber-950">
+        <div role="status" className="animate-rise bg-amber-500 px-4 py-1.5 text-center text-sm font-semibold text-amber-950">
           {sync.online
             ? `Sincronizando ${sync.pendingCount} ${sync.pendingCount === 1 ? 'cambio' : 'cambios'}…`
             : 'Sin conexión — tus cambios se guardan en este teléfono'}
@@ -74,7 +74,7 @@ export function Layout() {
         <Link
           to="/expense/new"
           aria-label="Agregar gasto"
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-3xl font-bold text-white shadow-lg active:bg-emerald-700"
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-3xl font-bold text-white shadow-lg transition active:scale-95 active:bg-emerald-700"
         >
           +
         </Link>

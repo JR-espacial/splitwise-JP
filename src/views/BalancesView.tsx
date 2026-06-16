@@ -79,7 +79,7 @@ export function BalancesView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
       <Link
         to="/expense/new"
-        className="flex min-h-14 items-center justify-center rounded-2xl bg-emerald-600 text-lg font-bold text-white shadow-md active:bg-emerald-700"
+        className="flex min-h-14 items-center justify-center rounded-2xl bg-emerald-600 text-lg font-bold text-white shadow-md transition active:scale-[0.98] active:bg-emerald-700"
       >
         + Agregar gasto
       </Link>
