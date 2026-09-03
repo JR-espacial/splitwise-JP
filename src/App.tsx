@@ -7,8 +7,10 @@ import { IdentityContext } from './ui/identityContext'
 import { Layout } from './ui/Layout'
 import { BalancesView } from './views/BalancesView'
 import { ExpenseFormView } from './views/ExpenseFormView'
+import { ExpenseDetailView } from './views/ExpenseDetailView'
 import { HistoryView } from './views/HistoryView'
 import { LoginScreen } from './views/LoginScreen'
+import { SettlementFormView } from './views/SettlementFormView'
 
 function Splash() {
   return (
@@ -101,7 +103,9 @@ function LedgerApp({ sessionEmail }: { sessionEmail: string }) {
             <Route path="/" element={<BalancesView snapshot={snapshot} />} />
             <Route path="/history" element={<HistoryView snapshot={snapshot} />} />
             <Route path="/expense/new" element={<ExpenseFormView snapshot={snapshot} />} />
-            <Route path="/expense/:id" element={<ExpenseFormView snapshot={snapshot} />} />
+            <Route path="/expense/:id" element={<ExpenseDetailView snapshot={snapshot} />} />
+            <Route path="/expense/:id/edit" element={<ExpenseFormView snapshot={snapshot} />} />
+            <Route path="/settlement/new" element={<SettlementFormView snapshot={snapshot} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

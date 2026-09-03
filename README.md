@@ -13,6 +13,7 @@ backend, deploy en Vercel.
    - `supabase/seed.sql` (edita los nombres de los 4 miembros si quieres)
    - `supabase/migrations/0003_auth_rls.sql` — **antes de ejecutarla, edita
      los correos placeholder** con los correos reales de los 4 miembros
+   - `supabase/migrations/0004_expense_details.sql`
 
    (O con la CLI: `supabase link --project-ref <ref> && supabase db push`.)
 
@@ -48,3 +49,11 @@ backend, deploy en Vercel.
 
 Las reglas de dinero, soft deletes y la arquitectura están documentadas en
 [`CLAUDE.md`](./CLAUDE.md).
+
+## Funciones principales
+
+- Gastos iguales, por subconjunto o con montos exactos, en múltiples monedas.
+- Pagos totales o parciales entre integrantes.
+- Categorías, búsqueda, filtros y exportación CSV.
+- Detalle del reparto y comprobantes fotográficos disponibles sin conexión.
+- Autoría y bitácora de cambios por movimiento.

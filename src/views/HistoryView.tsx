@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { LedgerSnapshot } from '../data/repository'
 import { ledgerStore } from '../data/store'
+import { downloadLedgerCsv } from '../data/exportCsv'
+import { CATEGORY_ICONS, CATEGORY_LABELS, expenseCategory } from '../domain/categories'
 import { formatCents, toBaseCents } from '../domain/money'
 import { computeTripTotals } from '../domain/totals'
-import type { Expense, Settlement } from '../domain/types'
+import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory, type Settlement } from '../domain/types'
 import { formatShortDate } from '../ui/dates'
+import { useIdentity } from '../ui/identityContext'
 
 type TypeFilter = 'all' | 'expense' | 'settlement'
 
@@ -28,12 +31,15 @@ const UNDO_MS = 5000
 
 export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
   const navigate = useNavigate()
+  const { currentMemberId } = useIdentity()
   const { group, members, expenses, splits, settlements } = snapshot
   const base = group.baseCurrency
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? '—'
 
   const [payerFilter, setPayerFilter] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | null>(null)
+  const [query, setQuery] = useState('')
   const [undoTarget, setUndoTarget] = useState<UndoTarget | null>(null)
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => {
@@ -49,14 +55,18 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
   const deleteExpense = (expense: Expense) => {
     const now = new Date().toISOString()
     const expenseSplits = splits.filter((s) => s.expenseId === expense.id)
-    void ledgerStore.saveExpense({ ...expense, deletedAt: now, updatedAt: now }, expenseSplits)
-    showUndo({ kind: 'expense', expense })
+    const changeLog = [...(expense.changeLog ?? []), { id: crypto.randomUUID(), memberId: currentMemberId, action: 'deleted' as const, at: now }]
+    const deletedExpense = { ...expense, deletedAt: now, updatedAt: now, updatedBy: currentMemberId, changeLog }
+    void ledgerStore.saveExpense(deletedExpense, expenseSplits)
+    showUndo({ kind: 'expense', expense: deletedExpense })
   }
 
   const deleteSettlement = (settlement: Settlement) => {
     const now = new Date().toISOString()
-    void ledgerStore.saveSettlement({ ...settlement, deletedAt: now, updatedAt: now })
-    showUndo({ kind: 'settlement', settlement })
+    const changeLog = [...(settlement.changeLog ?? []), { id: crypto.randomUUID(), memberId: currentMemberId, action: 'deleted' as const, at: now }]
+    const deletedSettlement = { ...settlement, deletedAt: now, updatedAt: now, updatedBy: currentMemberId, changeLog }
+    void ledgerStore.saveSettlement(deletedSettlement)
+    showUndo({ kind: 'settlement', settlement: deletedSettlement })
   }
 
   const undo = () => {
@@ -65,9 +75,12 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
     if (undoTarget.kind === 'expense') {
       const { expense } = undoTarget
       const expenseSplits = splits.filter((s) => s.expenseId === expense.id)
-      void ledgerStore.saveExpense({ ...expense, deletedAt: null, updatedAt: now }, expenseSplits)
+      const changeLog = [...(expense.changeLog ?? []), { id: crypto.randomUUID(), memberId: currentMemberId, action: 'restored' as const, at: now }]
+      void ledgerStore.saveExpense({ ...expense, deletedAt: null, updatedAt: now, updatedBy: currentMemberId, changeLog }, expenseSplits)
     } else {
-      void ledgerStore.saveSettlement({ ...undoTarget.settlement, deletedAt: null, updatedAt: now })
+      const settlement = undoTarget.settlement
+      const changeLog = [...(settlement.changeLog ?? []), { id: crypto.randomUUID(), memberId: currentMemberId, action: 'restored' as const, at: now }]
+      void ledgerStore.saveSettlement({ ...settlement, deletedAt: null, updatedAt: now, updatedBy: currentMemberId, changeLog })
     }
     setUndoTarget(null)
   }
@@ -76,7 +89,9 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
     (e) =>
       e.deletedAt === null &&
       (payerFilter === null || e.paidBy === payerFilter) &&
-      typeFilter !== 'settlement',
+      typeFilter !== 'settlement' &&
+      (categoryFilter === null || expenseCategory(e.category) === categoryFilter) &&
+      (query.trim() === '' || e.description.toLocaleLowerCase('es').includes(query.trim().toLocaleLowerCase('es'))),
   )
   const visibleSettlements = settlements.filter(
     (s) =>
@@ -94,7 +109,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
     })),
     ...visibleSettlements.map((settlement): LedgerEntry => ({
       kind: 'settlement',
-      date: settlement.createdAt.slice(0, 10),
+      date: settlement.settlementDate ?? settlement.createdAt.slice(0, 10),
       createdAt: settlement.createdAt,
       settlement,
     })),
@@ -104,7 +119,22 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">Historial</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">Historial</h2>
+        <button type="button" onClick={() => downloadLedgerCsv(snapshot)} className="min-h-11 rounded-xl px-3 text-sm font-bold text-emerald-700 active:bg-emerald-50">Exportar CSV</button>
+      </div>
+
+      <label className="relative">
+        <span className="sr-only">Buscar gastos</span>
+        <span aria-hidden className="absolute left-3 top-3 text-slate-400">⌕</span>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Buscar por descripción…"
+          className="min-h-12 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-slate-900"
+        />
+      </label>
 
       <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por persona">
         <button type="button" onClick={() => setPayerFilter(null)} className={filterChip(payerFilter === null)}>
@@ -139,6 +169,17 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
           </button>
         ))}
       </div>
+
+      {typeFilter !== 'settlement' && (
+        <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por categoría">
+          <button type="button" onClick={() => setCategoryFilter(null)} className={filterChip(categoryFilter === null)}>Todas</button>
+          {EXPENSE_CATEGORIES.map((category) => (
+            <button key={category} type="button" onClick={() => setCategoryFilter(categoryFilter === category ? null : category)} className={filterChip(categoryFilter === category)}>
+              {CATEGORY_ICONS[category]} {CATEGORY_LABELS[category]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {typeFilter !== 'settlement' && (
         <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -176,9 +217,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                     <p className="truncate font-semibold text-slate-900">
                       {entry.expense.description}
                     </p>
-                    <p className="text-sm text-slate-500">
-                      {memberName(entry.expense.paidBy)} pagó · {formatShortDate(entry.date)}
-                    </p>
+                    <p className="text-sm text-slate-500">{CATEGORY_ICONS[expenseCategory(entry.expense.category)]} {memberName(entry.expense.paidBy)} pagó · {formatShortDate(entry.date)}</p>
                   </div>
                   <div className="text-right tabular-nums">
                     <p className="font-bold text-slate-900">
@@ -215,6 +254,9 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                       {memberName(entry.settlement.toMember)}
                     </p>
                     <p className="text-sm text-emerald-700">{formatShortDate(entry.date)}</p>
+                    <p className="text-xs text-emerald-700/80">
+                      Registró {entry.settlement.createdBy ? memberName(entry.settlement.createdBy) : 'un integrante'}
+                    </p>
                   </div>
                   <p className="font-bold tabular-nums text-emerald-900">
                     {formatCents(entry.settlement.amountCents, base)}

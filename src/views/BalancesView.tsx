@@ -4,8 +4,6 @@ import { computeBalances } from '../domain/balances'
 import { formatCents } from '../domain/money'
 import { suggestSettlements } from '../domain/settle'
 import type { LedgerSnapshot } from '../data/repository'
-import { ledgerStore } from '../data/store'
-import { ConfirmButton } from '../ui/ConfirmButton'
 import { MemberAvatar } from '../ui/MemberAvatar'
 import { useIdentity } from '../ui/identityContext'
 
@@ -26,20 +24,6 @@ export function BalancesView({ snapshot }: { snapshot: LedgerSnapshot }) {
   const transfers = useMemo(() => suggestSettlements(balances), [balances])
   const balanceByMember = new Map(balances.map((b) => [b.memberId, b.balanceCents]))
   const memberById = new Map(members.map((m) => [m.id, m]))
-
-  const recordSettlement = (fromMember: string, toMember: string, amountCents: number) => {
-    const now = new Date().toISOString()
-    void ledgerStore.saveSettlement({
-      id: crypto.randomUUID(),
-      groupId: group.id,
-      fromMember,
-      toMember,
-      amountCents,
-      createdAt: now,
-      updatedAt: now,
-      deletedAt: null,
-    })
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -85,9 +69,10 @@ export function BalancesView({ snapshot }: { snapshot: LedgerSnapshot }) {
       </Link>
 
       <section aria-labelledby="settle-heading">
-        <h2 id="settle-heading" className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-          Settle up
-        </h2>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 id="settle-heading" className="text-sm font-bold uppercase tracking-wide text-slate-500">Liquidar deudas</h2>
+          <Link to="/settlement/new" className="flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-emerald-700 active:bg-emerald-50">Registrar otro pago</Link>
+        </div>
         {transfers.length === 0 ? (
           <p className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-center text-slate-500">
             Todos al día 🎉
@@ -111,13 +96,12 @@ export function BalancesView({ snapshot }: { snapshot: LedgerSnapshot }) {
                       {formatCents(transfer.amountCents, group.baseCurrency)}
                     </span>
                   </div>
-                  <ConfirmButton
-                    label="Marcar pagado"
-                    confirmLabel="¿Confirmar?"
-                    onConfirm={() =>
-                      recordSettlement(transfer.fromMember, transfer.toMember, transfer.amountCents)
-                    }
-                  />
+                  <Link
+                    to={`/settlement/new?from=${transfer.fromMember}&to=${transfer.toMember}`}
+                    className="flex min-h-11 shrink-0 items-center rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white active:bg-emerald-700"
+                  >
+                    Registrar
+                  </Link>
                 </li>
               )
             })}

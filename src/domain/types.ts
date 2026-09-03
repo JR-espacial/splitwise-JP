@@ -3,6 +3,25 @@ export type Currency = (typeof CURRENCIES)[number]
 
 export type SplitType = 'equal' | 'subset' | 'exact'
 
+export const EXPENSE_CATEGORIES = [
+  'food',
+  'transport',
+  'lodging',
+  'activities',
+  'shopping',
+  'other',
+] as const
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+
+export type ChangeAction = 'created' | 'updated' | 'deleted' | 'restored'
+
+export interface LedgerChange {
+  id: string
+  memberId: string
+  action: ChangeAction
+  at: string
+}
+
 export interface Member {
   id: string
   groupId: string
@@ -25,6 +44,13 @@ export interface Expense {
   /** ISO date (yyyy-mm-dd). */
   expenseDate: string
   splitType: SplitType
+  /** Optional for backwards compatibility with expenses captured before migration 0004. */
+  category?: ExpenseCategory
+  /** Compressed image data URL. Kept on the entity so receipts remain available offline. */
+  receiptDataUrl?: string | null
+  createdBy?: string | null
+  updatedBy?: string | null
+  changeLog?: LedgerChange[]
   createdAt: string
   updatedAt: string
   deletedAt: string | null
@@ -43,6 +69,11 @@ export interface Settlement {
   fromMember: string
   toMember: string
   amountCents: number
+  /** ISO date (yyyy-mm-dd). Falls back to createdAt for legacy rows. */
+  settlementDate?: string
+  createdBy?: string | null
+  updatedBy?: string | null
+  changeLog?: LedgerChange[]
   createdAt: string
   updatedAt: string
   deletedAt: string | null

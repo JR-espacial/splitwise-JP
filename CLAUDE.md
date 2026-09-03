@@ -25,6 +25,11 @@ Migrations live in `supabase/migrations/` (plain SQL, run in order in the
 Supabase SQL editor or via `supabase db push`). `supabase/seed.sql` creates
 the single group and its 4 members with fixed UUIDs (idempotent).
 
+Migration 0004 adds expense categories, compressed inline receipt images,
+custom settlement dates and authorship/change-log metadata. Receipt images
+are resized client-side and stored on the expense entity so they remain
+available offline and follow the same outbox/LWW sync path.
+
 ## Money rules (non-negotiable)
 
 - **All amounts are integer cents** (`amount_cents`, `share_cents`). Never use
@@ -60,6 +65,8 @@ free of React and Supabase imports.
 - **Soft deletes only**: set `deleted_at`; undo sets it back to null. There is
   deliberately no DELETE policy on `expenses`/`settlements` (database-enforced).
   `expense_splits` are derived rows and are replaced when an expense is edited.
+- Expense and settlement mutations append a client-generated entry to the
+  entity `change_log`; `created_by`/`updated_by` provide quick attribution.
 - `updated_at` is **server-assigned** by Postgres triggers on INSERT and
   UPDATE (migrations 0001 + 0002); the client-set value is only an optimistic
   placeholder. The incremental pull uses it as its cursor, so it must come

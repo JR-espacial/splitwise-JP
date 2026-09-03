@@ -4,11 +4,20 @@ import { getDefaultFxRate, getLastCurrency, rememberFxRate, rememberLastCurrency
 import { getAutoFxRate } from '../data/fxService'
 import type { LedgerSnapshot } from '../data/repository'
 import { ledgerStore } from '../data/store'
+import { CATEGORY_ICONS, CATEGORY_LABELS, expenseCategory } from '../domain/categories'
 import { formatCents, parseAmountToCents, toBaseCents } from '../domain/money'
 import { computeSplits, SplitError } from '../domain/split'
-import { CURRENCIES, type Currency, type Expense, type SplitType } from '../domain/types'
+import {
+  CURRENCIES,
+  EXPENSE_CATEGORIES,
+  type Currency,
+  type Expense,
+  type ExpenseCategory,
+  type SplitType,
+} from '../domain/types'
 import { todayISO } from '../ui/dates'
 import { useIdentity } from '../ui/identityContext'
+import { compressReceipt } from '../ui/receipts'
 
 function centsToText(cents: number): string {
   const units = Math.floor(cents / 100)
@@ -54,6 +63,13 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
   )
   const [paidBy, setPaidBy] = useState(editing ? editing.paidBy : currentMemberId)
   const [description, setDescription] = useState(editing ? editing.description : '')
+  const [category, setCategory] = useState<ExpenseCategory>(
+    expenseCategory(editing?.category),
+  )
+  const [receiptDataUrl, setReceiptDataUrl] = useState<string | null>(
+    editing?.receiptDataUrl ?? null,
+  )
+  const [receiptBusy, setReceiptBusy] = useState(false)
   const [expenseDate, setExpenseDate] = useState(editing ? editing.expenseDate : todayISO())
   const [splitType, setSplitType] = useState<SplitType>(editing ? editing.splitType : 'equal')
   const [subsetIds, setSubsetIds] = useState<Set<string>>(
@@ -139,6 +155,12 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
   const handleSave = () => {
     if (!canSave || amountCents === null) return
     const now = new Date().toISOString()
+    const change = {
+      id: crypto.randomUUID(),
+      memberId: currentMemberId,
+      action: editing ? ('updated' as const) : ('created' as const),
+      at: now,
+    }
     const expense: Expense = {
       id: editing ? editing.id : crypto.randomUUID(),
       groupId: group.id,
@@ -149,6 +171,11 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
       description: description.trim(),
       expenseDate,
       splitType,
+      category,
+      receiptDataUrl,
+      createdBy: editing?.createdBy ?? currentMemberId,
+      updatedBy: currentMemberId,
+      changeLog: [...(editing?.changeLog ?? []), change],
       createdAt: editing ? editing.createdAt : now,
       updatedAt: now,
       deletedAt: editing ? editing.deletedAt : null,
@@ -270,6 +297,64 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
       </div>
 
       <div>
+        <span className={fieldLabel}>Categoría</span>
+        <div className="grid grid-cols-3 gap-2">
+          {EXPENSE_CATEGORIES.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setCategory(value)}
+              className={`${chipBase} flex-col gap-1 ${value === category ? chipOn : chipOff}`}
+            >
+              <span aria-hidden>{CATEGORY_ICONS[value]}</span>
+              <span>{CATEGORY_LABELS[value]}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <span className={fieldLabel}>Comprobante (opcional)</span>
+        {receiptDataUrl ? (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <img src={receiptDataUrl} alt="Comprobante del gasto" className="max-h-64 w-full object-contain" />
+            <button
+              type="button"
+              onClick={() => setReceiptDataUrl(null)}
+              className="min-h-11 w-full border-t border-slate-200 font-semibold text-red-600 active:bg-red-50"
+            >
+              Quitar comprobante
+            </button>
+          </div>
+        ) : (
+          <label className="flex min-h-14 cursor-pointer items-center justify-center rounded-2xl border border-dashed border-slate-400 bg-white font-semibold text-slate-700 active:bg-slate-50">
+            {receiptBusy ? 'Procesando imagen…' : '📷 Agregar foto'}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              disabled={receiptBusy}
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                event.target.value = ''
+                if (!file) return
+                setReceiptBusy(true)
+                setFormError(null)
+                void compressReceipt(file)
+                  .then(setReceiptDataUrl)
+                  .catch((error: unknown) =>
+                    setFormError(error instanceof Error ? error.message : 'No se pudo leer la imagen'),
+                  )
+                  .finally(() => setReceiptBusy(false))
+              }}
+            />
+          </label>
+        )}
+        <p className="mt-1 text-xs text-slate-500">La foto se comprime y queda disponible sin conexión.</p>
+      </div>
+
+      <div>
         <label htmlFor="expense-date" className={fieldLabel}>
           Fecha
         </label>
@@ -356,7 +441,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
         </button>
         <button
           type="submit"
-          disabled={!canSave}
+          disabled={!canSave || receiptBusy}
           className="min-h-14 flex-[2] rounded-2xl bg-emerald-600 text-lg font-bold text-white shadow-md transition active:scale-[0.98] active:bg-emerald-700 disabled:bg-slate-300"
         >
           Guardar

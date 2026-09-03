@@ -1,8 +1,10 @@
 import type {
   Currency,
   Expense,
+  ExpenseCategory,
   ExpenseSplit,
   Member,
+  LedgerChange,
   Settlement,
   SplitType,
 } from '../domain/types'
@@ -40,6 +42,11 @@ export interface ExpenseRow {
   description: string
   expense_date: string
   split_type: SplitType
+  category?: ExpenseCategory
+  receipt_data_url?: string | null
+  created_by?: string | null
+  updated_by?: string | null
+  change_log?: LedgerChange[]
   created_at: string
   updated_at: string
   deleted_at: string | null
@@ -57,6 +64,10 @@ export interface SettlementRow {
   from_member: string
   to_member: string
   amount_cents: number
+  settlement_date?: string
+  created_by?: string | null
+  updated_by?: string | null
+  change_log?: LedgerChange[]
   created_at: string
   updated_at: string
   deleted_at: string | null
@@ -89,6 +100,11 @@ export const expenseFromRow = (row: ExpenseRow): Expense => ({
   description: row.description,
   expenseDate: row.expense_date,
   splitType: row.split_type,
+  category: row.category ?? 'other',
+  receiptDataUrl: row.receipt_data_url ?? null,
+  createdBy: row.created_by ?? null,
+  updatedBy: row.updated_by ?? null,
+  changeLog: row.change_log ?? [],
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   deletedAt: row.deleted_at,
@@ -104,6 +120,11 @@ export const expenseToRow = (expense: Expense): ExpenseRow => ({
   description: expense.description,
   expense_date: expense.expenseDate,
   split_type: expense.splitType,
+  category: expense.category ?? 'other',
+  receipt_data_url: expense.receiptDataUrl ?? null,
+  created_by: expense.createdBy ?? null,
+  updated_by: expense.updatedBy ?? null,
+  change_log: expense.changeLog ?? [],
   created_at: expense.createdAt,
   updated_at: expense.updatedAt,
   deleted_at: expense.deletedAt,
@@ -127,6 +148,10 @@ export const settlementFromRow = (row: SettlementRow): Settlement => ({
   fromMember: row.from_member,
   toMember: row.to_member,
   amountCents: Number(row.amount_cents),
+  settlementDate: row.settlement_date ?? row.created_at.slice(0, 10),
+  createdBy: row.created_by ?? null,
+  updatedBy: row.updated_by ?? null,
+  changeLog: row.change_log ?? [],
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   deletedAt: row.deleted_at,
@@ -138,6 +163,10 @@ export const settlementToRow = (settlement: Settlement): SettlementRow => ({
   from_member: settlement.fromMember,
   to_member: settlement.toMember,
   amount_cents: settlement.amountCents,
+  settlement_date: settlement.settlementDate ?? settlement.createdAt.slice(0, 10),
+  created_by: settlement.createdBy ?? null,
+  updated_by: settlement.updatedBy ?? null,
+  change_log: settlement.changeLog ?? [],
   created_at: settlement.createdAt,
   updated_at: settlement.updatedAt,
   deleted_at: settlement.deletedAt,
