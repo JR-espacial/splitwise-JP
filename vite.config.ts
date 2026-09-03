@@ -18,8 +18,8 @@ export default defineConfig({
         description: 'Gastos compartidos del roadtrip',
         start_url: '/',
         display: 'standalone',
-        background_color: '#f8fafc',
-        theme_color: '#047857',
+        background_color: '#f7f8fa',
+        theme_color: '#f7f8fa',
         icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
       },
       workbox: {

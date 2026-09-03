@@ -69,29 +69,29 @@ export function SettlementFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
       <div>
         <label htmlFor="from-member" className={fieldLabel}>Quién pagó</label>
-        <select id="from-member" value={fromMember} onChange={(event) => setFromMember(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900">
+        <select id="from-member" value={fromMember} onChange={(event) => setFromMember(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-surface px-3 text-slate-900">
           {snapshot.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
         </select>
       </div>
       <div>
         <label htmlFor="to-member" className={fieldLabel}>A quién</label>
-        <select id="to-member" value={toMember} onChange={(event) => setToMember(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900">
+        <select id="to-member" value={toMember} onChange={(event) => setToMember(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-surface px-3 text-slate-900">
           {snapshot.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
         </select>
-        {fromMember === toMember && <p className="mt-1 text-sm font-semibold text-red-600">Selecciona dos personas diferentes.</p>}
+        {fromMember === toMember && <p className="mt-1 text-sm font-semibold text-danger">Selecciona dos personas diferentes.</p>}
       </div>
       <div>
         <label htmlFor="settlement-amount" className={fieldLabel}>Monto en {snapshot.group.baseCurrency}</label>
-        <input id="settlement-amount" inputMode="decimal" autoFocus placeholder="0,00" value={amountText} onChange={(event) => setAmountText(event.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-2xl font-bold tabular-nums text-slate-900" />
+        <input id="settlement-amount" inputMode="decimal" autoFocus placeholder="0,00" value={amountText} onChange={(event) => setAmountText(event.target.value)} className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 text-2xl font-bold tabular-nums text-slate-900" />
         {suggestion && (
           <p className="mt-1 text-sm text-slate-500">Saldo sugerido: {formatCents(suggestion.amountCents, snapshot.group.baseCurrency)}</p>
         )}
       </div>
       <div>
         <label htmlFor="settlement-date" className={fieldLabel}>Fecha</label>
-        <input id="settlement-date" type="date" value={settlementDate} onChange={(event) => setSettlementDate(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900" />
+        <input id="settlement-date" type="date" value={settlementDate} onChange={(event) => setSettlementDate(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-surface px-3 text-slate-900" />
       </div>
-      <button type="submit" disabled={!canSave} className="min-h-14 rounded-2xl bg-emerald-600 text-lg font-bold text-white shadow-md active:bg-emerald-700 disabled:bg-slate-300">Guardar pago</button>
+      <button type="submit" disabled={!canSave} className="min-h-14 rounded-2xl bg-accent-600 text-lg font-bold text-on-accent shadow-md active:bg-accent-700 disabled:bg-slate-300 disabled:text-slate-600">Guardar pago</button>
     </form>
   )
 }

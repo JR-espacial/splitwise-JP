@@ -38,7 +38,7 @@ export function ConfirmButton({
       type="button"
       onClick={handleClick}
       className={`min-h-11 rounded-xl px-4 font-semibold transition active:scale-95 ${
-        armed ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
+        armed ? 'bg-amber-500 text-amber-950' : 'bg-accent-600 text-on-accent'
       } ${className}`}
     >
       {armed ? confirmLabel : label}

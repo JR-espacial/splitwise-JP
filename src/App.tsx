@@ -65,7 +65,7 @@ function LedgerApp({ sessionEmail }: { sessionEmail: string }) {
         <button
           type="button"
           onClick={ledgerStore.retryLoad}
-          className="min-h-12 rounded-2xl bg-emerald-600 px-6 font-bold text-white transition active:scale-[0.98] active:bg-emerald-700"
+          className="min-h-12 rounded-2xl bg-accent-600 px-6 font-bold text-on-accent transition active:scale-[0.98] active:bg-accent-700"
         >
           Reintentar
         </button>
@@ -85,7 +85,7 @@ function LedgerApp({ sessionEmail }: { sessionEmail: string }) {
         <button
           type="button"
           onClick={() => void signOut()}
-          className="min-h-12 rounded-2xl bg-emerald-600 px-6 font-bold text-white transition active:scale-[0.98] active:bg-emerald-700"
+          className="min-h-12 rounded-2xl bg-accent-600 px-6 font-bold text-on-accent transition active:scale-[0.98] active:bg-accent-700"
         >
           Cerrar sesión
         </button>
@@ -99,7 +99,7 @@ function LedgerApp({ sessionEmail }: { sessionEmail: string }) {
     <IdentityContext.Provider value={identity}>
       <BrowserRouter>
         <Routes>
-          <Route element={<Layout />}>
+          <Route element={<Layout key={identity.currentMemberId} />}>
             <Route path="/" element={<BalancesView snapshot={snapshot} />} />
             <Route path="/history" element={<HistoryView snapshot={snapshot} />} />
             <Route path="/expense/new" element={<ExpenseFormView snapshot={snapshot} />} />

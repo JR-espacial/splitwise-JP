@@ -33,8 +33,8 @@ const SPLIT_LABELS: Record<SplitType, string> = {
 
 const fieldLabel = 'mb-1 block text-sm font-semibold text-slate-700'
 const chipBase = 'flex min-h-11 items-center justify-center rounded-xl border px-3 text-sm font-semibold'
-const chipOn = 'border-emerald-600 bg-emerald-600 text-white'
-const chipOff = 'border-slate-300 bg-white text-slate-700 active:bg-slate-100'
+const chipOn = 'border-accent-600 bg-accent-600 text-on-accent'
+const chipOff = 'border-slate-300 bg-surface text-slate-700 active:bg-slate-100'
 
 export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
   const { id } = useParams()
@@ -221,7 +221,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
           placeholder="0,00"
           value={amountText}
           onChange={(e) => setAmountText(e.target.value)}
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-2xl font-bold tabular-nums text-slate-900"
+          className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 text-2xl font-bold tabular-nums text-slate-900"
         />
       </div>
 
@@ -255,7 +255,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
               setFxEdited(true)
               setFxIsAuto(false)
             }}
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 tabular-nums text-slate-900"
+            className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 tabular-nums text-slate-900"
           />
           <p className="mt-1 text-sm text-slate-500">
             {amountCents !== null && fxValid && (
@@ -292,7 +292,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
           placeholder="¿Qué pagaron?"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900"
+          className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 text-slate-900"
         />
       </div>
 
@@ -316,18 +316,18 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
       <div>
         <span className={fieldLabel}>Comprobante (opcional)</span>
         {receiptDataUrl ? (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-surface">
             <img src={receiptDataUrl} alt="Comprobante del gasto" className="max-h-64 w-full object-contain" />
             <button
               type="button"
               onClick={() => setReceiptDataUrl(null)}
-              className="min-h-11 w-full border-t border-slate-200 font-semibold text-red-600 active:bg-red-50"
+              className="min-h-11 w-full border-t border-slate-200 font-semibold text-danger active:bg-danger-soft"
             >
               Quitar comprobante
             </button>
           </div>
         ) : (
-          <label className="flex min-h-14 cursor-pointer items-center justify-center rounded-2xl border border-dashed border-slate-400 bg-white font-semibold text-slate-700 active:bg-slate-50">
+          <label className="flex min-h-14 cursor-pointer items-center justify-center rounded-2xl border border-dashed border-slate-400 bg-surface font-semibold text-slate-700 active:bg-slate-50">
             {receiptBusy ? 'Procesando imagen…' : '📷 Agregar foto'}
             <input
               type="file"
@@ -363,7 +363,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
           type="date"
           value={expenseDate}
           onChange={(e) => setExpenseDate(e.target.value)}
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900"
+          className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 text-slate-900"
         />
       </div>
 
@@ -410,12 +410,12 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
                   onChange={(e) =>
                     setExactTexts((prev) => ({ ...prev, [m.id]: e.target.value }))
                   }
-                  className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 tabular-nums text-slate-900"
+                  className="min-h-11 w-full rounded-xl border border-slate-300 bg-surface px-3 tabular-nums text-slate-900"
                 />
               </label>
             ))}
             {amountCents !== null && exactDiff !== 0 && (
-              <p className="text-sm font-semibold text-red-600">
+              <p className="text-sm font-semibold text-danger">
                 {exactDiff > 0
                   ? `Faltan ${formatCents(exactDiff, currency)}`
                   : `Sobran ${formatCents(-exactDiff, currency)}`}
@@ -426,7 +426,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
       </div>
 
       {formError && (
-        <p role="alert" className="text-sm font-semibold text-red-600">
+        <p role="alert" className="text-sm font-semibold text-danger">
           {formError}
         </p>
       )}
@@ -435,14 +435,14 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="min-h-14 flex-1 rounded-2xl border border-slate-300 bg-white font-bold text-slate-700 active:bg-slate-100"
+          className="min-h-14 flex-1 rounded-2xl border border-slate-300 bg-surface font-bold text-slate-700 active:bg-slate-100"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={!canSave || receiptBusy}
-          className="min-h-14 flex-[2] rounded-2xl bg-emerald-600 text-lg font-bold text-white shadow-md transition active:scale-[0.98] active:bg-emerald-700 disabled:bg-slate-300"
+          className="min-h-14 flex-[2] rounded-2xl bg-accent-600 text-lg font-bold text-on-accent shadow-md transition active:scale-[0.98] active:bg-accent-700 disabled:bg-slate-300 disabled:text-slate-600"
         >
           Guardar
         </button>

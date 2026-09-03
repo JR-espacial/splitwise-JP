@@ -15,8 +15,8 @@ type TypeFilter = 'all' | 'expense' | 'settlement'
 const filterChip = (active: boolean) =>
   `min-h-11 shrink-0 rounded-xl border px-3 text-sm font-semibold transition ${
     active
-      ? 'border-emerald-600 bg-emerald-600 text-white'
-      : 'border-slate-300 bg-white text-slate-700 active:bg-slate-100'
+      ? 'border-accent-600 bg-accent-600 text-on-accent'
+      : 'border-slate-300 bg-surface text-slate-700 active:bg-slate-100'
   }`
 
 type LedgerEntry =
@@ -118,10 +118,10 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
   const totals = computeTripTotals(visibleExpenses, splits)
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="animate-rise flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">Historial</h2>
-        <button type="button" onClick={() => downloadLedgerCsv(snapshot)} className="min-h-11 rounded-xl px-3 text-sm font-bold text-emerald-700 active:bg-emerald-50">Exportar CSV</button>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Historial</h2>
+        <button type="button" onClick={() => downloadLedgerCsv(snapshot)} className="min-h-11 rounded-xl px-3 text-sm font-bold text-accent-ink active:bg-accent-50">Exportar CSV</button>
       </div>
 
       <label className="relative">
@@ -132,7 +132,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Buscar por descripción…"
-          className="min-h-12 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-slate-900"
+          className="min-h-12 w-full rounded-xl border border-slate-300 bg-surface pl-9 pr-3 text-slate-900"
         />
       </label>
 
@@ -182,7 +182,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
       )}
 
       {typeFilter !== 'settlement' && (
-        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-surface px-4 py-3 shadow-sm">
           <span className="text-sm text-slate-600">
             {payerFilter === null
               ? 'Total del viaje'
@@ -198,7 +198,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
       )}
 
       {entries.length === 0 && (
-        <p className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-slate-500">
+        <p className="rounded-2xl border border-slate-200 bg-surface px-4 py-10 text-center text-slate-500">
           Aún no hay movimientos.
         </p>
       )}
@@ -207,7 +207,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
         {entries.map((entry) =>
           entry.kind === 'expense' ? (
             <li key={entry.expense.id}>
-              <div className="flex items-stretch overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-stretch overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-sm">
                 <button
                   type="button"
                   onClick={() => navigate(`/expense/${entry.expense.id}`)}
@@ -238,7 +238,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                   type="button"
                   onClick={() => deleteExpense(entry.expense)}
                   aria-label={`Borrar gasto ${entry.expense.description}`}
-                  className="flex w-12 items-center justify-center border-l border-slate-100 text-slate-400 active:bg-red-50 active:text-red-600"
+                  className="flex w-12 items-center justify-center border-l border-slate-100 text-slate-400 active:bg-danger-soft active:text-danger"
                 >
                   ✕
                 </button>
@@ -246,19 +246,19 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
             </li>
           ) : (
             <li key={entry.settlement.id}>
-              <div className="flex items-stretch overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50">
+              <div className="flex items-stretch overflow-hidden rounded-2xl border border-accent-200 bg-accent-50">
                 <div className="flex min-h-14 flex-1 items-center gap-3 px-4 py-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-emerald-900">
+                    <p className="text-sm font-semibold text-accent-ink">
                       {memberName(entry.settlement.fromMember)} pagó a{' '}
                       {memberName(entry.settlement.toMember)}
                     </p>
-                    <p className="text-sm text-emerald-700">{formatShortDate(entry.date)}</p>
-                    <p className="text-xs text-emerald-700/80">
+                    <p className="text-sm text-accent-ink">{formatShortDate(entry.date)}</p>
+                    <p className="text-xs text-accent-ink/80">
                       Registró {entry.settlement.createdBy ? memberName(entry.settlement.createdBy) : 'un integrante'}
                     </p>
                   </div>
-                  <p className="font-bold tabular-nums text-emerald-900">
+                  <p className="font-bold tabular-nums text-accent-ink">
                     {formatCents(entry.settlement.amountCents, base)}
                   </p>
                 </div>
@@ -266,7 +266,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                   type="button"
                   onClick={() => deleteSettlement(entry.settlement)}
                   aria-label="Borrar pago"
-                  className="flex w-12 items-center justify-center border-l border-emerald-100 text-emerald-400 active:bg-red-50 active:text-red-600"
+                  className="flex w-12 items-center justify-center border-l border-accent-100 text-accent-ink active:bg-danger-soft active:text-danger"
                 >
                   ✕
                 </button>
@@ -277,14 +277,14 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
       </ul>
 
       {undoTarget && (
-        <div className="animate-rise fixed inset-x-0 bottom-24 z-20 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-slate-900 px-4 py-3 text-white shadow-xl">
+        <div className="animate-rise fixed inset-x-0 bottom-24 z-20 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-toast px-4 py-3 text-white shadow-xl">
           <span className="text-sm">
             {undoTarget.kind === 'expense' ? 'Gasto borrado' : 'Pago borrado'}
           </span>
           <button
             type="button"
             onClick={undo}
-            className="min-h-11 rounded-xl px-3 font-bold text-emerald-400 active:bg-slate-800"
+            className="min-h-11 rounded-xl px-3 font-bold text-white active:bg-white/10"
           >
             Deshacer
           </button>

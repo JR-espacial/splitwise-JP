@@ -35,13 +35,13 @@ export function ExpenseDetailView({ snapshot }: { snapshot: LedgerSnapshot }) {
         </button>
         <Link
           to={`/expense/${expense.id}/edit`}
-          className="flex min-h-11 items-center rounded-xl bg-emerald-600 px-4 font-bold text-white active:bg-emerald-700"
+          className="flex min-h-11 items-center rounded-xl bg-accent-600 px-4 font-bold text-on-accent active:bg-accent-700"
         >
           Editar
         </Link>
       </div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 text-center shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-surface p-5 text-center shadow-sm">
         <div className="text-3xl" aria-hidden>{CATEGORY_ICONS[category]}</div>
         <p className="mt-1 text-sm font-semibold text-slate-500">{CATEGORY_LABELS[category]}</p>
         <h2 className="mt-2 text-xl font-bold text-slate-900">{expense.description}</h2>
@@ -60,7 +60,7 @@ export function ExpenseDetailView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
       <section>
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">Reparto</h3>
-        <ul className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <ul className="overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-sm">
           {expenseSplits.map((split) => {
             const member = memberById.get(split.memberId)
             if (!member) return null
@@ -84,13 +84,13 @@ export function ExpenseDetailView({ snapshot }: { snapshot: LedgerSnapshot }) {
             <img
               src={expense.receiptDataUrl}
               alt="Comprobante del gasto"
-              className="max-h-[32rem] w-full rounded-2xl border border-slate-200 bg-white object-contain shadow-sm"
+              className="max-h-[32rem] w-full rounded-2xl border border-slate-200 bg-surface object-contain shadow-sm"
             />
           </a>
         </section>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+      <section className="rounded-2xl border border-slate-200 bg-surface px-4 py-3 text-sm text-slate-600">
         <p>Creado por <span className="font-semibold text-slate-900">{creator?.name ?? 'Integrante del grupo'}</span>.</p>
         <p>
           Último cambio por <span className="font-semibold text-slate-900">{updater?.name ?? creator?.name ?? 'Integrante del grupo'}</span>
@@ -101,7 +101,7 @@ export function ExpenseDetailView({ snapshot }: { snapshot: LedgerSnapshot }) {
       {(expense.changeLog?.length ?? 0) > 0 && (
         <section>
           <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">Actividad</h3>
-          <ol className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <ol className="overflow-hidden rounded-2xl border border-slate-200 bg-surface">
             {[...(expense.changeLog ?? [])].reverse().map((change) => (
               <li key={change.id} className="border-b border-slate-100 px-4 py-3 text-sm last:border-b-0">
                 <p className="font-semibold text-slate-900">{memberById.get(change.memberId)?.name ?? 'Integrante'} · {ACTION_LABELS[change.action]}</p>
