@@ -35,7 +35,7 @@ export function Layout() {
         <button
           type="button"
           onClick={() => setProfileOpen(true)}
-          className="flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-surface px-2.5 text-sm font-semibold text-slate-700 active:bg-accent-50"
+          className="flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-surface px-2.5 text-sm font-semibold text-slate-700 active:bg-accent-50"
           aria-label="Abrir perfil y apariencia"
           aria-haspopup="dialog"
           aria-expanded={profileOpen}

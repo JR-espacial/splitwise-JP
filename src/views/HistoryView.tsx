@@ -211,15 +211,15 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                 <button
                   type="button"
                   onClick={() => navigate(`/expense/${entry.expense.id}`)}
-                  className="flex min-h-16 flex-1 items-center gap-3 px-4 py-2 text-left active:bg-slate-50"
+                  className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-4 py-2 text-left active:bg-slate-50"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-slate-900">
+                    <p className="truncate font-semibold text-slate-900" title={entry.expense.description}>
                       {entry.expense.description}
                     </p>
-                    <p className="text-sm text-slate-500">{CATEGORY_ICONS[expenseCategory(entry.expense.category)]} {memberName(entry.expense.paidBy)} pagó · {formatShortDate(entry.date)}</p>
+                    <p className="truncate text-sm text-slate-500">{CATEGORY_ICONS[expenseCategory(entry.expense.category)]} {memberName(entry.expense.paidBy)} pagó · {formatShortDate(entry.date)}</p>
                   </div>
-                  <div className="text-right tabular-nums">
+                  <div className="shrink-0 whitespace-nowrap text-right tabular-nums">
                     <p className="font-bold text-slate-900">
                       {formatCents(entry.expense.amountCents, entry.expense.currency)}
                     </p>
@@ -238,7 +238,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                   type="button"
                   onClick={() => deleteExpense(entry.expense)}
                   aria-label={`Borrar gasto ${entry.expense.description}`}
-                  className="flex w-12 items-center justify-center border-l border-slate-100 text-slate-400 active:bg-danger-soft active:text-danger"
+                  className="flex w-12 shrink-0 items-center justify-center border-l border-slate-100 text-slate-400 active:bg-danger-soft active:text-danger"
                 >
                   ✕
                 </button>
@@ -247,18 +247,18 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
           ) : (
             <li key={entry.settlement.id}>
               <div className="flex items-stretch overflow-hidden rounded-2xl border border-accent-200 bg-accent-50">
-                <div className="flex min-h-14 flex-1 items-center gap-3 px-4 py-2">
+                <div className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-accent-ink">
+                    <p className="truncate text-sm font-semibold text-accent-ink">
                       {memberName(entry.settlement.fromMember)} pagó a{' '}
                       {memberName(entry.settlement.toMember)}
                     </p>
                     <p className="text-sm text-accent-ink">{formatShortDate(entry.date)}</p>
-                    <p className="text-xs text-accent-ink/80">
+                    <p className="truncate text-xs text-accent-ink/80">
                       Registró {entry.settlement.createdBy ? memberName(entry.settlement.createdBy) : 'un integrante'}
                     </p>
                   </div>
-                  <p className="font-bold tabular-nums text-accent-ink">
+                  <p className="shrink-0 whitespace-nowrap font-bold tabular-nums text-accent-ink">
                     {formatCents(entry.settlement.amountCents, base)}
                   </p>
                 </div>
@@ -266,7 +266,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                   type="button"
                   onClick={() => deleteSettlement(entry.settlement)}
                   aria-label="Borrar pago"
-                  className="flex w-12 items-center justify-center border-l border-accent-100 text-accent-ink active:bg-danger-soft active:text-danger"
+                  className="flex w-12 shrink-0 items-center justify-center border-l border-accent-100 text-accent-ink active:bg-danger-soft active:text-danger"
                 >
                   ✕
                 </button>

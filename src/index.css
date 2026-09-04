@@ -91,7 +91,8 @@
 }
 .animate-rise { animation: rise 180ms ease-out; }
 .app-shell, .login-shell { background: var(--canvas); }
-.app-header { background: color-mix(in srgb, var(--canvas) 94%, transparent); backdrop-filter: blur(16px); border-bottom: 1px solid var(--color-slate-200); }
+/* Keep sticky header content below the status bar in standalone iOS mode. */
+.app-header { padding-top: calc(1rem + env(safe-area-inset-top, 0px)); background: color-mix(in srgb, var(--canvas) 94%, transparent); backdrop-filter: blur(16px); border-bottom: 1px solid var(--color-slate-200); }
 .brand-mark { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 15px; background: var(--accent-soft); color: var(--accent-ink); }
 .eyebrow { font-size: 9px; font-weight: 700; letter-spacing: .16em; color: var(--color-slate-500); }
 .balance-hero { position: relative; overflow: hidden; border-radius: 26px; padding: 24px; color: var(--on-accent); background: radial-gradient(ellipse at top right, var(--accent-strong), transparent 75%), var(--accent-hover); box-shadow: 0 12px 28px -16px #0f172a60; }
