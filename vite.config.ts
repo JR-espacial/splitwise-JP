@@ -11,7 +11,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['icons/boyo-*.png'],
       manifest: {
         name: 'Europa 2026',
         short_name: 'Roadtrip',
@@ -20,7 +20,10 @@ export default defineConfig({
         display: 'standalone',
         background_color: '#f8f9ff',
         theme_color: '#f8f9ff',
-        icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+        icons: [
+          { src: '/icons/boyo-beige-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/boyo-beige-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        ],
       },
       workbox: {
         navigateFallback: '/index.html',
