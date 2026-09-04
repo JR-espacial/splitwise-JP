@@ -1,17 +1,21 @@
 import { useState } from 'react'
 import { ProfileDialog } from './ProfileDialog'
 import { useAppearance } from './appearance'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { ledgerStore, useLedger } from '../data/store'
-import { Icon } from './Icon'
+import { MemberAvatar } from './MemberAvatar'
+import { DesignIcon } from './DesignIcon'
 import { useIdentity } from './identityContext'
 
 const tabClass = ({ isActive }: { isActive: boolean }) =>
   `flex min-h-14 flex-1 flex-col gap-1 items-center justify-center rounded-2xl text-xs font-semibold transition-colors ${
-    isActive ? 'bg-accent-50 text-accent-ink' : 'text-slate-500 active:bg-slate-100'
+    isActive ? 'text-accent-ink' : 'text-slate-500 active:bg-slate-100'
   }`
 
 export function Layout() {
+  const { pathname } = useLocation()
+  const formPage = pathname === '/expense/new' || pathname.endsWith('/edit') || pathname === '/settlement/new'
+  const pageTitle = pathname === '/settlement/new' ? 'Registrar pago' : pathname.endsWith('/edit') ? 'Editar gasto' : 'Nuevo gasto'
   const { snapshot, writeError, sync } = useLedger()
   const { currentMemberId, changeIdentity } = useIdentity()
   const [profileOpen, setProfileOpen] = useState(false)
@@ -31,26 +35,21 @@ export function Layout() {
         />
       )}
       <header className="app-header sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-4">
-        <div className="flex min-w-0 items-center gap-3"><span className="brand-mark"><Icon name="journey" /></span><div className="min-w-0"><p className="eyebrow">GASTOS COMPARTIDOS</p><h1 className="truncate text-base font-bold text-slate-900">{snapshot?.group.name ?? 'Roadtrip'}</h1></div></div>
+        <div className="flex min-w-0 items-center gap-2">
+          {formPage && <Link to="/" aria-label="Volver a balances" className="header-back"><DesignIcon name="back" /></Link>}
+          <img src="/design/logo.png" alt="" width="32" height="32" className="shrink-0" />
+          <div className="min-w-0"><h1 className="truncate text-[17px] font-semibold">{formPage ? pageTitle : snapshot?.group.name ?? 'Roadtrip'}</h1><p className="eyebrow">{formPage ? snapshot?.group.name : 'GASTOS COMPARTIDOS'}</p></div>
+        </div>
         <button
           type="button"
           onClick={() => setProfileOpen(true)}
-          className="flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-surface px-2.5 text-sm font-semibold text-slate-700 active:bg-accent-50"
+          className="profile-trigger"
           aria-label="Abrir perfil y apariencia"
           aria-haspopup="dialog"
           aria-expanded={profileOpen}
         >
           {me ? (
-            <>
-              <span
-                aria-hidden
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-[#1c3025]"
-                style={{ backgroundColor: me.color }}
-              >
-                {me.name.charAt(0)}
-              </span>
-              {me.name}
-            </>
+            <MemberAvatar member={me} size={32} />
           ) : (
             'Cambiar'
           )}
@@ -81,27 +80,27 @@ export function Layout() {
         </div>
       )}
 
-      <main className="flex-1 px-5 pb-32 pt-5">
+      <main className="app-main flex-1 px-4 pb-28 pt-3">
         <Outlet />
       </main>
 
-      <nav className="bottom-nav fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-lg items-center gap-4 px-5 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3">
+      {!formPage && <nav className="bottom-nav fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-lg items-center gap-4 px-5 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3">
         <NavLink to="/" end className={tabClass}>
-          <Icon name="wallet" />
+          <DesignIcon name="wallet" />
           Balances
         </NavLink>
         <Link
           to="/expense/new"
           aria-label="Agregar gasto"
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-600 text-3xl font-bold text-on-accent shadow-lg transition active:scale-95 active:bg-accent-700"
+          className="nav-add flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-600 text-3xl font-bold text-on-accent shadow-lg transition active:scale-95 active:bg-accent-700"
         >
-          <Icon name="plus" />
+          <DesignIcon name="plus" />
         </Link>
         <NavLink to="/history" className={tabClass}>
-          <Icon name="history" />
+          <DesignIcon name="history" />
           Historial
         </NavLink>
-      </nav>
+      </nav>}
     </div>
   )
 }

@@ -5,6 +5,8 @@ import { ledgerStore } from '../data/store'
 import { computeBalances } from '../domain/balances'
 import { formatCents, parseAmountToCents } from '../domain/money'
 import { suggestSettlements } from '../domain/settle'
+import { MemberAvatar } from '../ui/MemberAvatar'
+import { DesignIcon } from '../ui/DesignIcon'
 import { todayISO } from '../ui/dates'
 import { useIdentity } from '../ui/identityContext'
 
@@ -35,11 +37,16 @@ export function SettlementFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
   )
   const [settlementDate, setSettlementDate] = useState(todayISO())
   const amountCents = parseAmountToCents(amountText)
-  const canSave = amountCents !== null && amountCents > 0 && fromMember !== toMember
+  const canSave = amountCents !== null && amountCents > 0 && fromMember !== toMember && settlementDate !== '' && snapshot.members.some((m) => m.id === fromMember) && snapshot.members.some((m) => m.id === toMember)
+  const currentSuggestion = useMemo(() => suggestSettlements(computeBalances(
+    snapshot.members.map((member) => member.id), snapshot.expenses, snapshot.splits, snapshot.settlements,
+  )).find((item) => item.fromMember === fromMember && item.toMember === toMember), [snapshot, fromMember, toMember])
+  const from = snapshot.members.find((member) => member.id === fromMember)
+  const to = snapshot.members.find((member) => member.id === toMember)
 
   return (
     <form
-      className="flex flex-col gap-5"
+      className="entry-form flex flex-col gap-5"
       onSubmit={(event) => {
         event.preventDefault()
         if (!canSave || amountCents === null) return
@@ -62,37 +69,26 @@ export function SettlementFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
         navigate('/')
       }}
     >
-      <div>
-        <button type="button" onClick={() => navigate(-1)} className="min-h-11 font-semibold text-slate-600">← Volver</button>
-        <h2 className="text-xl font-bold text-slate-900">Registrar pago</h2>
-        <p className="text-sm text-slate-500">Puede ser el total sugerido o cualquier pago parcial.</p>
+      <h2 className="text-2xl font-bold tracking-tight">Registrar pago</h2>
+      <div className="surface-card payment-preview">
+        <div>{from && <MemberAvatar member={from} size={56} />}<strong>{from?.name ?? '—'}</strong><small>PAGADOR</small></div>
+        <span className="arrow-circle"><DesignIcon name="arrow" /></span>
+        <div>{to && <MemberAvatar member={to} size={56} />}<strong>{to?.name ?? '—'}</strong><small>DESTINO</small></div>
       </div>
+      <fieldset><legend className={fieldLabel}>¿Quién pagó?</legend><div className="payment-options">{snapshot.members.map((member) => <button type="button" key={member.id} aria-pressed={member.id === fromMember} onClick={() => setFromMember(member.id)}>{member.name}</button>)}</div></fieldset>
+      <fieldset><legend className={fieldLabel}>¿A quién se le pagó?</legend><div className="payment-options">{snapshot.members.map((member) => <button type="button" key={member.id} aria-pressed={member.id === toMember} onClick={() => setToMember(member.id)}>{member.name}</button>)}</div>
+      {fromMember === toMember && <p className="mt-2 text-sm text-danger">Selecciona dos personas diferentes.</p>}</fieldset>
+      <div className="payment-suggestion"><p>Deuda pendiente calculada</p><div><strong>{formatCents(currentSuggestion?.amountCents ?? 0, snapshot.group.baseCurrency)}</strong>{currentSuggestion && <button type="button" onClick={() => setAmountText((currentSuggestion.amountCents / 100).toFixed(2))}>Pagar total</button>}</div>{!currentSuggestion && <p className="mt-2 text-slate-500">Sin transferencia sugerida entre estas personas. Puedes registrar un pago parcial.</p>}</div>
+      <div>
+        <label htmlFor="settlement-amount" className={fieldLabel}>Monto a liquidar · {snapshot.group.baseCurrency}</label>
+        <input id="settlement-amount" inputMode="decimal" placeholder="0,00" value={amountText} onChange={(event) => setAmountText(event.target.value)} className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 text-2xl font-bold tabular-nums text-slate-900" />
 
-      <div>
-        <label htmlFor="from-member" className={fieldLabel}>Quién pagó</label>
-        <select id="from-member" value={fromMember} onChange={(event) => setFromMember(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-surface px-3 text-slate-900">
-          {snapshot.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-        </select>
-      </div>
-      <div>
-        <label htmlFor="to-member" className={fieldLabel}>A quién</label>
-        <select id="to-member" value={toMember} onChange={(event) => setToMember(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-surface px-3 text-slate-900">
-          {snapshot.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-        </select>
-        {fromMember === toMember && <p className="mt-1 text-sm font-semibold text-danger">Selecciona dos personas diferentes.</p>}
-      </div>
-      <div>
-        <label htmlFor="settlement-amount" className={fieldLabel}>Monto en {snapshot.group.baseCurrency}</label>
-        <input id="settlement-amount" inputMode="decimal" autoFocus placeholder="0,00" value={amountText} onChange={(event) => setAmountText(event.target.value)} className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 text-2xl font-bold tabular-nums text-slate-900" />
-        {suggestion && (
-          <p className="mt-1 text-sm text-slate-500">Saldo sugerido: {formatCents(suggestion.amountCents, snapshot.group.baseCurrency)}</p>
-        )}
       </div>
       <div>
         <label htmlFor="settlement-date" className={fieldLabel}>Fecha</label>
         <input id="settlement-date" type="date" value={settlementDate} onChange={(event) => setSettlementDate(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-surface px-3 text-slate-900" />
       </div>
-      <button type="submit" disabled={!canSave} className="min-h-14 rounded-2xl bg-accent-600 text-lg font-bold text-on-accent shadow-md active:bg-accent-700 disabled:bg-slate-300 disabled:text-slate-600">Guardar pago</button>
+      <button type="submit" disabled={!canSave} className="min-h-14 rounded-2xl bg-accent-600 text-lg font-bold text-on-accent shadow-md active:bg-accent-700 disabled:bg-slate-300 disabled:text-slate-600"><DesignIcon name="save" size={20} /> Guardar pago</button>
     </form>
   )
 }

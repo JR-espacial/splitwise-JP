@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { LedgerSnapshot } from '../data/repository'
 import { ledgerStore } from '../data/store'
@@ -7,6 +7,8 @@ import { CATEGORY_ICONS, CATEGORY_LABELS, expenseCategory } from '../domain/cate
 import { formatCents, toBaseCents } from '../domain/money'
 import { computeTripTotals } from '../domain/totals'
 import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory, type Settlement } from '../domain/types'
+import { DesignIcon } from '../ui/DesignIcon'
+import { MemberAvatar } from '../ui/MemberAvatar'
 import { formatShortDate } from '../ui/dates'
 import { useIdentity } from '../ui/identityContext'
 
@@ -118,10 +120,10 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
   const totals = computeTripTotals(visibleExpenses, splits)
 
   return (
-    <div className="animate-rise flex flex-col gap-3">
+    <div className="history-view animate-rise flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Historial</h2>
-        <button type="button" onClick={() => downloadLedgerCsv(snapshot)} className="min-h-11 rounded-xl px-3 text-sm font-bold text-accent-ink active:bg-accent-50">Exportar CSV</button>
+        <div><h2 className="text-2xl font-bold tracking-tight text-slate-900">Historial</h2><p className="text-xs text-slate-500">Movimientos registrados</p></div>
+        <button type="button" onClick={() => downloadLedgerCsv(snapshot)} className="min-h-11 rounded-xl bg-accent-50 px-3 text-xs font-semibold text-accent-ink"><DesignIcon name="export" size={14} /> Exportar</button>
       </div>
 
       <label className="relative">
@@ -136,27 +138,12 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
         />
       </label>
 
-      <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por persona">
-        <button type="button" onClick={() => setPayerFilter(null)} className={filterChip(payerFilter === null)}>
-          Todos
-        </button>
-        {members.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => setPayerFilter(payerFilter === m.id ? null : m.id)}
-            className={filterChip(payerFilter === m.id)}
-          >
-            {m.name}
-          </button>
-        ))}
-      </div>
       <div className="flex gap-2" role="group" aria-label="Filtrar por tipo">
         {(
           [
-            ['all', 'Todo'],
+            ['all', 'Todos'],
             ['expense', 'Gastos'],
-            ['settlement', 'Pagos'],
+            ['settlement', 'Liquidaciones'],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -170,9 +157,24 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
         ))}
       </div>
 
+      <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por persona">
+        <button type="button" onClick={() => setPayerFilter(null)} className={filterChip(payerFilter === null)}>
+          Viajeros: Todos
+        </button>
+        {members.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => setPayerFilter(payerFilter === m.id ? null : m.id)}
+            className={filterChip(payerFilter === m.id)}
+          >
+            {m.name}
+          </button>
+        ))}
+      </div>
       {typeFilter !== 'settlement' && (
         <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por categoría">
-          <button type="button" onClick={() => setCategoryFilter(null)} className={filterChip(categoryFilter === null)}>Todas</button>
+          <button type="button" onClick={() => setCategoryFilter(null)} className={filterChip(categoryFilter === null)}>Categoría: Todas</button>
           {EXPENSE_CATEGORIES.map((category) => (
             <button key={category} type="button" onClick={() => setCategoryFilter(categoryFilter === category ? null : category)} className={filterChip(categoryFilter === category)}>
               {CATEGORY_ICONS[category]} {CATEGORY_LABELS[category]}
@@ -182,7 +184,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
       )}
 
       {typeFilter !== 'settlement' && (
-        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-surface px-4 py-3 shadow-sm">
+        <div className="history-total flex items-center justify-between rounded-2xl px-4 py-3 shadow-sm">
           <span className="text-sm text-slate-600">
             {payerFilter === null
               ? 'Total del viaje'
@@ -203,9 +205,10 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
         </p>
       )}
 
-      <ul className="flex flex-col gap-2">
-        {entries.map((entry) =>
-          entry.kind === 'expense' ? (
+      <ul className="history-list flex flex-col gap-2">
+        {entries.map((entry, index) => <Fragment key={entry.kind === 'expense' ? entry.expense.id : entry.settlement.id}>
+          {(index === 0 || entries[index - 1]?.date !== entry.date) && <li className="history-date">{formatShortDate(entry.date)}</li>}
+          {entry.kind === 'expense' ? (
             <li key={entry.expense.id}>
               <div className="flex items-stretch overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-sm">
                 <button
@@ -213,11 +216,12 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                   onClick={() => navigate(`/expense/${entry.expense.id}`)}
                   className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-4 py-2 text-left active:bg-slate-50"
                 >
+                  <span className="history-category"><DesignIcon name={expenseCategory(entry.expense.category)} size={18} /></span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-slate-900" title={entry.expense.description}>
+                    <p className="font-semibold text-slate-900" title={entry.expense.description}>
                       {entry.expense.description}
                     </p>
-                    <p className="truncate text-sm text-slate-500">{CATEGORY_ICONS[expenseCategory(entry.expense.category)]} {memberName(entry.expense.paidBy)} pagó · {formatShortDate(entry.date)}</p>
+                    <p className="truncate text-sm text-slate-500">{entry.expense.paidBy === currentMemberId ? 'Pagaste tú' : `Pagó ${memberName(entry.expense.paidBy)}`}</p>
                   </div>
                   <div className="shrink-0 whitespace-nowrap text-right tabular-nums">
                     <p className="font-bold text-slate-900">
@@ -240,7 +244,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                   aria-label={`Borrar gasto ${entry.expense.description}`}
                   className="flex w-12 shrink-0 items-center justify-center border-l border-slate-100 text-slate-400 active:bg-danger-soft active:text-danger"
                 >
-                  ✕
+                  <DesignIcon name="delete" size={14} />
                 </button>
               </div>
             </li>
@@ -248,8 +252,9 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
             <li key={entry.settlement.id}>
               <div className="flex items-stretch overflow-hidden rounded-2xl border border-accent-200 bg-accent-50">
                 <div className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-2">
+                  {members.find((member) => member.id === entry.settlement.fromMember) && <MemberAvatar member={members.find((member) => member.id === entry.settlement.fromMember)!} size={36} />}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-accent-ink">
+                    <p className="text-sm font-semibold text-slate-900">
                       {memberName(entry.settlement.fromMember)} pagó a{' '}
                       {memberName(entry.settlement.toMember)}
                     </p>
@@ -258,7 +263,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                       Registró {entry.settlement.createdBy ? memberName(entry.settlement.createdBy) : 'un integrante'}
                     </p>
                   </div>
-                  <p className="shrink-0 whitespace-nowrap font-bold tabular-nums text-accent-ink">
+                  <p className="shrink-0 whitespace-nowrap font-bold tabular-nums text-success">
                     {formatCents(entry.settlement.amountCents, base)}
                   </p>
                 </div>
@@ -268,12 +273,12 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                   aria-label="Borrar pago"
                   className="flex w-12 shrink-0 items-center justify-center border-l border-accent-100 text-accent-ink active:bg-danger-soft active:text-danger"
                 >
-                  ✕
+                  <DesignIcon name="delete" size={14} />
                 </button>
               </div>
             </li>
-          ),
-        )}
+          )}
+        </Fragment>)}
       </ul>
 
       {undoTarget && (

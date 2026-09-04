@@ -4,7 +4,7 @@ import { getDefaultFxRate, getLastCurrency, rememberFxRate, rememberLastCurrency
 import { getAutoFxRate } from '../data/fxService'
 import type { LedgerSnapshot } from '../data/repository'
 import { ledgerStore } from '../data/store'
-import { CATEGORY_ICONS, CATEGORY_LABELS, expenseCategory } from '../domain/categories'
+import { CATEGORY_LABELS, expenseCategory } from '../domain/categories'
 import { formatCents, parseAmountToCents, toBaseCents } from '../domain/money'
 import { computeSplits, SplitError } from '../domain/split'
 import {
@@ -17,6 +17,8 @@ import {
 } from '../domain/types'
 import { todayISO } from '../ui/dates'
 import { useIdentity } from '../ui/identityContext'
+import { DesignIcon } from '../ui/DesignIcon'
+import { MemberAvatar } from '../ui/MemberAvatar'
 import { compressReceipt } from '../ui/receipts'
 
 function centsToText(cents: number): string {
@@ -206,19 +208,17 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
   return (
     <form
-      className="flex flex-col gap-5"
+      className="entry-form flex flex-col gap-5"
       onSubmit={(e) => {
         e.preventDefault()
         handleSave()
       }}
     >
-      <h2 className="text-xl font-bold text-slate-900">
-        {editing ? 'Editar gasto' : 'Nuevo gasto'}
-      </h2>
+      <button type="button" onClick={() => navigate(-1)} className="self-start rounded-full bg-accent-50 px-3 py-2 text-xs font-semibold text-slate-600">Cancelar</button>
 
-      <div>
+      <div className="amount-panel">
         <label htmlFor="amount" className={fieldLabel}>
-          Monto
+          Monto total · {currency}
         </label>
         <input
           id="amount"
@@ -232,20 +232,21 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
       </div>
 
       <div>
-        <span className={fieldLabel}>Moneda</span>
-        <div className="grid grid-cols-3 gap-2">
+        <span className={fieldLabel}>Moneda del pago</span>
+        <div className="currency-options">
           {CURRENCIES.map((c) => (
             <button
               key={c}
               type="button"
               onClick={() => selectCurrency(c)}
+              aria-pressed={c === currency}
               className={`${chipBase} ${c === currency ? chipOn : chipOff}`}
             >
               {c}
             </button>
           ))}
         </div>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="travel-tip mt-3 text-slate-500">
           {base === 'MXN' ? 'Si pagaste con tarjeta, puedes registrar en MXN el cargo que aparece en tu banco. Para efectivo, usa la moneda original.' : `Los balances y pagos se calculan en ${base}.`}
         </p>
       </div>
@@ -278,17 +279,18 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
       )}
 
       <div>
-        <span className={fieldLabel}>Pagó</span>
-        <div className="grid grid-cols-2 gap-2">
+        <span className={fieldLabel}>¿Quién pagó el total?</span>
+        <div className="payer-options">
           {members.map((m) => (
             <button
               key={m.id}
               type="button"
               onClick={() => setPaidBy(m.id)}
+              aria-pressed={m.id === paidBy}
               className={`${chipBase} ${m.id === paidBy ? chipOn : chipOff}`}
             >
+              <MemberAvatar member={m} size={40} />
               {m.name}
-              {m.id === currentMemberId && ' (tú)'}
             </button>
           ))}
         </div>
@@ -296,11 +298,11 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
       <div>
         <label htmlFor="description" className={fieldLabel}>
-          Descripción
+          Concepto del gasto
         </label>
         <input
           id="description"
-          placeholder="¿Qué pagaron?"
+          placeholder="¿En qué se gastó? Ej. Cena, tren Praga…"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 text-slate-900"
@@ -309,23 +311,38 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
       <div>
         <span className={fieldLabel}>Categoría</span>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="category-options grid grid-cols-3 gap-2">
           {EXPENSE_CATEGORIES.map((value) => (
             <button
               key={value}
               type="button"
               onClick={() => setCategory(value)}
+              aria-pressed={value === category}
               className={`${chipBase} flex-col gap-1 ${value === category ? chipOn : chipOff}`}
             >
-              <span aria-hidden>{CATEGORY_ICONS[value]}</span>
+              <DesignIcon name={value} size={20} />
               <span>{CATEGORY_LABELS[value]}</span>
             </button>
           ))}
         </div>
       </div>
 
+      <div className="date-receipt-grid">
       <div>
-        <span className={fieldLabel}>Comprobante (opcional)</span>
+        <label htmlFor="expense-date" className={fieldLabel}>
+          Fecha
+        </label>
+        <input
+          id="expense-date"
+          type="date"
+          value={expenseDate}
+          onChange={(e) => setExpenseDate(e.target.value)}
+          className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 text-slate-900"
+        />
+      </div>
+
+      <div>
+        <span className={fieldLabel}>Foto comprobante</span>
         {receiptDataUrl ? (
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-surface">
             <img src={receiptDataUrl} alt="Comprobante del gasto" className="max-h-64 w-full object-contain" />
@@ -338,8 +355,8 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
             </button>
           </div>
         ) : (
-          <label className="flex min-h-14 cursor-pointer items-center justify-center rounded-2xl border border-dashed border-slate-400 bg-surface font-semibold text-slate-700 active:bg-slate-50">
-            {receiptBusy ? 'Procesando imagen…' : '📷 Agregar foto'}
+          <label className="flex min-h-12 gap-2 cursor-pointer items-center justify-center rounded-2xl border border-transparent bg-surface text-xs font-semibold text-accent-ink active:bg-slate-50">
+            <DesignIcon name="camera" size={18} /> {receiptBusy ? 'Procesando imagen…' : 'Subir ticket'}
             <input
               type="file"
               accept="image/*"
@@ -365,27 +382,17 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
         <p className="mt-1 text-xs text-slate-500">La foto se comprime y queda disponible sin conexión.</p>
       </div>
 
-      <div>
-        <label htmlFor="expense-date" className={fieldLabel}>
-          Fecha
-        </label>
-        <input
-          id="expense-date"
-          type="date"
-          value={expenseDate}
-          onChange={(e) => setExpenseDate(e.target.value)}
-          className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 text-slate-900"
-        />
       </div>
 
       <div>
-        <span className={fieldLabel}>Dividir</span>
+        <span className={fieldLabel}>División del gasto</span>
         <div className="grid grid-cols-3 gap-2">
           {(Object.keys(SPLIT_LABELS) as SplitType[]).map((type) => (
             <button
               key={type}
               type="button"
               onClick={() => setSplitType(type)}
+              aria-pressed={type === splitType}
               className={`${chipBase} ${type === splitType ? chipOn : chipOff}`}
             >
               {SPLIT_LABELS[type]}
@@ -410,7 +417,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
         )}
 
         {splitType === 'exact' && (
-          <div className="mt-3 flex flex-col gap-2">
+          <div className="split-preview mt-3 flex flex-col gap-2">
             {members.map((m) => (
               <label key={m.id} className="flex items-center gap-3">
                 <span className="w-20 shrink-0 text-sm font-semibold text-slate-700">{m.name}</span>
@@ -425,6 +432,8 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
                 />
               </label>
             ))}
+            <p className="flex justify-between text-xs text-slate-500"><span>Total asignado</span><strong>{formatCents(exactSum, currency)}</strong></p>
+            {amountCents !== null && exactDiff === 0 && <p className="text-xs text-success">Suma completa y cuadrada</p>}
             {amountCents !== null && exactDiff !== 0 && (
               <p className="text-sm font-semibold text-danger">
                 {exactDiff > 0
@@ -442,7 +451,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
         </p>
       )}
 
-      <div className="flex gap-2">
+      <div className="form-actions">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -455,7 +464,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
           disabled={!canSave || receiptBusy}
           className="min-h-14 flex-[2] rounded-2xl bg-accent-600 text-lg font-bold text-on-accent shadow-md transition active:scale-[0.98] active:bg-accent-700 disabled:bg-slate-300 disabled:text-slate-600"
         >
-          Guardar
+          <DesignIcon name="save" size={18} /> Guardar gasto
         </button>
       </div>
     </form>

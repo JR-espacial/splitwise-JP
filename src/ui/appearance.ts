@@ -36,7 +36,7 @@ function applyAppearance(appearance: Appearance) {
   document.documentElement.dataset.theme = appearance.color
   document.documentElement.dataset.mode = appearance.mode
   document.querySelector('meta[name="theme-color"]')?.setAttribute(
-    'content', appearance.mode === 'dark' ? '#111827' : '#f7f8fa',
+    'content', appearance.mode === 'dark' ? '#111827' : '#f8f9ff',
   )
 }
 
