@@ -67,3 +67,21 @@ export function assertSplitsMatchAmount(amountCents: number, splits: ExpenseSpli
     throw new SplitError(`split invariant violated: shares sum to ${total}, expected ${amountCents}`)
   }
 }
+
+/** Convert hundredths of a percent to cents, distributing rounding by largest remainder. */
+export function percentageShares(amountCents: number, weights: Record<string, number>): Record<string, number> {
+  const entries = Object.entries(weights)
+  if (!Number.isSafeInteger(amountCents) || amountCents <= 0 || entries.length === 0 ||
+      entries.some(([, weight]) => !Number.isInteger(weight) || weight < 0 || weight > 10000) ||
+      entries.reduce((sum, [, weight]) => sum + weight, 0) !== 10000) {
+    throw new SplitError('Los porcentajes deben sumar 100%.')
+  }
+  const shares = entries.map(([id, weight]) => {
+    const product = BigInt(amountCents) * BigInt(weight)
+    return { id, cents: Number(product / 10000n), remainder: Number(product % 10000n) }
+  })
+  const remaining = amountCents - shares.reduce((sum, share) => sum + share.cents, 0)
+  const ranked = [...shares].sort((a, b) => b.remainder - a.remainder)
+  for (let i = 0; i < remaining; i++) ranked[i]!.cents++
+  return Object.fromEntries(shares.map(({ id, cents }) => [id, cents]))
+}

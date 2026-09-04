@@ -28,7 +28,7 @@ export function LoginScreen() {
       <div className="text-center">
         <span className="brand-mark login-mark"><Icon name="journey" /></span>
         <p className="eyebrow mb-3">MENOS CUENTAS, MÁS AVENTURAS</p>
-        <h1 className="text-4xl font-semibold tracking-tight text-slate-900">Roadtrip Europa 2026</h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-slate-900">Europa 2026</h1>
         <p className="mt-4 text-sm leading-relaxed text-slate-600">
           Entra con tu cuenta de Google y sigue con la aventura.
         </p>

@@ -88,7 +88,7 @@ export function SettlementFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
         <label htmlFor="settlement-date" className={fieldLabel}>Fecha</label>
         <input id="settlement-date" type="date" value={settlementDate} onChange={(event) => setSettlementDate(event.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-surface px-3 text-slate-900" />
       </div>
-      <button type="submit" disabled={!canSave} className="min-h-14 rounded-2xl bg-accent-600 text-lg font-bold text-on-accent shadow-md active:bg-accent-700 disabled:bg-slate-300 disabled:text-slate-600"><DesignIcon name="save" size={20} /> Guardar pago</button>
+      <button type="submit" disabled={!canSave} className="inline-flex items-center justify-center gap-2 min-h-14 rounded-2xl bg-accent-600 text-lg font-bold text-on-accent shadow-md active:bg-accent-700 disabled:bg-slate-300 disabled:text-white"><DesignIcon name="save" size={20} /> Guardar pago</button>
     </form>
   )
 }

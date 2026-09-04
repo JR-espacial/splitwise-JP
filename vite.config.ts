@@ -13,7 +13,7 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'Roadtrip Europa 2026',
+        name: 'Europa 2026',
         short_name: 'Roadtrip',
         description: 'Gastos compartidos del roadtrip',
         start_url: '/',

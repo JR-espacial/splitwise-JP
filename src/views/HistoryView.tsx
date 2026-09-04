@@ -7,6 +7,7 @@ import { CATEGORY_ICONS, CATEGORY_LABELS, expenseCategory } from '../domain/cate
 import { formatCents, toBaseCents } from '../domain/money'
 import { computeTripTotals } from '../domain/totals'
 import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory, type Settlement } from '../domain/types'
+import { MovementMenu } from '../ui/MovementMenu'
 import { DesignIcon } from '../ui/DesignIcon'
 import { MemberAvatar } from '../ui/MemberAvatar'
 import { formatShortDate } from '../ui/dates'
@@ -123,7 +124,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
     <div className="history-view animate-rise flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <div><h2 className="text-2xl font-bold tracking-tight text-slate-900">Historial</h2><p className="text-xs text-slate-500">Movimientos registrados</p></div>
-        <button type="button" onClick={() => downloadLedgerCsv(snapshot)} className="min-h-11 rounded-xl bg-accent-50 px-3 text-xs font-semibold text-accent-ink"><DesignIcon name="export" size={14} /> Exportar</button>
+        <button type="button" onClick={() => downloadLedgerCsv(snapshot)} className="inline-flex items-center justify-center gap-2 min-h-11 rounded-xl bg-accent-50 px-3 text-xs font-semibold text-accent-ink"><DesignIcon name="export" size={14} /> Exportar</button>
       </div>
 
       <label className="relative">
@@ -176,8 +177,8 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
         <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por categoría">
           <button type="button" onClick={() => setCategoryFilter(null)} className={filterChip(categoryFilter === null)}>Categoría: Todas</button>
           {EXPENSE_CATEGORIES.map((category) => (
-            <button key={category} type="button" onClick={() => setCategoryFilter(categoryFilter === category ? null : category)} className={filterChip(categoryFilter === category)}>
-              {CATEGORY_ICONS[category]} {CATEGORY_LABELS[category]}
+            <button key={category} type="button" onClick={() => setCategoryFilter(categoryFilter === category ? null : category)} className={`inline-flex items-center gap-2 ${filterChip(categoryFilter === category)}`}>
+              <span aria-hidden="true">{CATEGORY_ICONS[category]}</span><span>{CATEGORY_LABELS[category]}</span>
             </button>
           ))}
         </div>
@@ -238,14 +239,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                     )}
                   </div>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => deleteExpense(entry.expense)}
-                  aria-label={`Borrar gasto ${entry.expense.description}`}
-                  className="flex w-12 shrink-0 items-center justify-center border-l border-slate-100 text-slate-400 active:bg-danger-soft active:text-danger"
-                >
-                  <DesignIcon name="delete" size={14} />
-                </button>
+                <MovementMenu label={`gasto ${entry.expense.description}`} onDelete={() => deleteExpense(entry.expense)} />
               </div>
             </li>
           ) : (
@@ -258,7 +252,6 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                       {memberName(entry.settlement.fromMember)} pagó a{' '}
                       {memberName(entry.settlement.toMember)}
                     </p>
-                    <p className="text-sm text-accent-ink">{formatShortDate(entry.date)}</p>
                     <p className="truncate text-xs text-accent-ink/80">
                       Registró {entry.settlement.createdBy ? memberName(entry.settlement.createdBy) : 'un integrante'}
                     </p>
@@ -267,14 +260,7 @@ export function HistoryView({ snapshot }: { snapshot: LedgerSnapshot }) {
                     {formatCents(entry.settlement.amountCents, base)}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => deleteSettlement(entry.settlement)}
-                  aria-label="Borrar pago"
-                  className="flex w-12 shrink-0 items-center justify-center border-l border-accent-100 text-accent-ink active:bg-danger-soft active:text-danger"
-                >
-                  <DesignIcon name="delete" size={14} />
-                </button>
+                <MovementMenu label={`pago de ${memberName(entry.settlement.fromMember)} a ${memberName(entry.settlement.toMember)}`} onDelete={() => deleteSettlement(entry.settlement)} />
               </div>
             </li>
           )}

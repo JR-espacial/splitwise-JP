@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { computeBalances } from '../domain/balances'
 import { DesignIcon } from '../ui/DesignIcon'
-import { downloadLedgerCsv } from '../data/exportCsv'
 import { computeTripTotals } from '../domain/totals'
 import { formatCents } from '../domain/money'
 import { suggestSettlements } from '../domain/settle'
@@ -36,7 +35,6 @@ export function BalancesView({ snapshot }: { snapshot: LedgerSnapshot }) {
       <section className="balance-hero" aria-label="Resumen de tu balance">
         <div className="flex items-center justify-between gap-2">
           <span className="hero-badge"><DesignIcon name="check" size={12} />{myBalance > 0 ? 'TE DEBEN · CUENTAS CLARAS' : myBalance < 0 ? 'POR PAGAR · SALDO PENDIENTE' : 'ESTÁS AL DÍA · DISFRUTA EL VIAJE 🎉'}</span>
-          <button type="button" aria-label="Exportar resumen del viaje" className="hero-export" onClick={() => downloadLedgerCsv(snapshot)}><DesignIcon name="share" size={16} /></button>
         </div>
         <div className="personal-balance"><p>Tu balance personal</p><strong>{formatCents(Math.abs(myBalance), group.baseCurrency)}</strong><span>{group.baseCurrency}</span></div>
         <div className="hero-total"><div><p>TOTAL DEL VIAJE</p><strong>{formatCents(totals.totalBaseCents, group.baseCurrency)}</strong></div><span><DesignIcon name="receipt" size={12} />{totals.expenseCount} gastos · {members.length} viajeros</span></div>
@@ -53,7 +51,6 @@ export function BalancesView({ snapshot }: { snapshot: LedgerSnapshot }) {
             return <li key={`${transfer.fromMember}-${transfer.toMember}`} className="surface-card transfer-card">
               <div className="transfer-people"><div><MemberAvatar member={from} /><span><strong>{from.name}</strong><small className="text-danger">Transfiere</small></span></div><DesignIcon name="flow" size={18} /><div><span className="text-right"><strong>{to.name}</strong><small className="text-success">Recibe</small></span><MemberAvatar member={to} /></div></div>
               <div className="transfer-amount"><div><small>Monto sugerido</small><strong>{formatCents(transfer.amountCents, group.baseCurrency)}</strong></div><Link to={paymentUrl}><DesignIcon name="register" size={14} />Registrar</Link></div>
-              <div className="transfer-foot"><span><DesignIcon name="magic" size={14} />{transfers.length} {transfers.length === 1 ? 'transferencia sugerida' : 'transferencias sugeridas'}</span><Link to="/history">Ver movimientos</Link></div>
             </li>
           })}</ul>
         )}

@@ -38,7 +38,7 @@ export function Layout() {
         <div className="flex min-w-0 items-center gap-2">
           {formPage && <Link to="/" aria-label="Volver a balances" className="header-back"><DesignIcon name="back" /></Link>}
           <img src="/design/logo.png" alt="" width="32" height="32" className="shrink-0" />
-          <div className="min-w-0"><h1 className="truncate text-[17px] font-semibold">{formPage ? pageTitle : snapshot?.group.name ?? 'Roadtrip'}</h1><p className="eyebrow">{formPage ? snapshot?.group.name : 'GASTOS COMPARTIDOS'}</p></div>
+          <div className="min-w-0"><h1 className="truncate text-[17px] font-semibold">{formPage ? pageTitle : snapshot?.group.name ?? 'Viaje'}</h1><p className="eyebrow">{formPage ? snapshot?.group.name : 'GASTOS COMPARTIDOS'}</p></div>
         </div>
         <button
           type="button"

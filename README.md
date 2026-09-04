@@ -1,4 +1,4 @@
-# splitwise-JP — Roadtrip Europa 2026
+# splitwise-JP — Europa 2026
 
 Nuestra versión de Splitwise: PWA mobile-first para 4 personas. React + Vite +
 TypeScript + Tailwind en el cliente, Supabase (Postgres + Realtime) como
@@ -34,7 +34,7 @@ El botón de la app publicada abre correctamente el selector de cuentas de Googl
 La configuración de retorno apunta a Vercel. Queda por confirmar el acceso
 completo de un integrante desde su celular.
 
-1. Crear un proyecto de Google Cloud para Roadtrip Europa 2026 y configurar
+1. Crear un proyecto de Google Cloud para Europa 2026 y configurar
    Google Auth Platform con los permisos básicos `openid`, `email` y `profile`.
 2. Crear un cliente OAuth de tipo aplicación web. Origen autorizado:
    `https://splitwise-jp.vercel.app`. URI de redirección autorizada:

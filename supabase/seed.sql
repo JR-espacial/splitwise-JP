@@ -2,7 +2,7 @@
 -- idempotent and the data survives re-runs.
 
 insert into groups (id, name, base_currency)
-values ('11111111-1111-4111-8111-111111111111', 'Roadtrip Europa 2026', 'MXN')
+values ('11111111-1111-4111-8111-111111111111', 'Europa 2026', 'MXN')
 on conflict (id) do nothing;
 
 insert into members (id, group_id, name, color)

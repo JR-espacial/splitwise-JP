@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getDefaultFxRate, getLastCurrency, rememberFxRate, rememberLastCurrency } from '../data/fxDefaults'
+import { getDefaultFxRate, rememberFxRate } from '../data/fxDefaults'
 import { getAutoFxRate } from '../data/fxService'
 import type { LedgerSnapshot } from '../data/repository'
 import { ledgerStore } from '../data/store'
 import { CATEGORY_LABELS, expenseCategory } from '../domain/categories'
-import { formatCents, parseAmountToCents, toBaseCents } from '../domain/money'
-import { computeSplits, SplitError } from '../domain/split'
+import { CURRENCY_SYMBOLS, formatCents, parseAmountToCents, toBaseCents } from '../domain/money'
+import { computeSplits, percentageShares, SplitError } from '../domain/split'
 import {
   CURRENCIES,
   EXPENSE_CATEGORIES,
@@ -17,6 +17,7 @@ import {
 } from '../domain/types'
 import { todayISO } from '../ui/dates'
 import { useIdentity } from '../ui/identityContext'
+import { AmountInput } from '../ui/AmountInput'
 import { DesignIcon } from '../ui/DesignIcon'
 import { MemberAvatar } from '../ui/MemberAvatar'
 import { compressReceipt } from '../ui/receipts'
@@ -27,10 +28,9 @@ function centsToText(cents: number): string {
   return decimals === 0 ? String(units) : `${units}.${String(decimals).padStart(2, '0')}`
 }
 
-const SPLIT_LABELS: Record<SplitType, string> = {
-  equal: 'Entre todos',
-  subset: 'Algunos',
-  exact: 'Montos exactos',
+type SplitMode = 'equal' | 'exact' | 'percentage'
+const SPLIT_LABELS: Record<SplitMode, string> = {
+  equal: 'Partes iguales', exact: 'Montos exactos', percentage: 'Porcentajes',
 }
 
 const fieldLabel = 'mb-1 block text-sm font-semibold text-slate-700'
@@ -56,12 +56,12 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
   const [amountText, setAmountText] = useState(editing ? centsToText(editing.amountCents) : '')
   const [currency, setCurrency] = useState<Currency>(
-    editing ? editing.currency : getLastCurrency(base) ?? base,
+    editing ? editing.currency : 'MXN',
   )
   const [fxRateText, setFxRateText] = useState(() =>
     editing
       ? String(editing.fxRateToBase)
-      : String(getDefaultFxRate(getLastCurrency(base) ?? base, base) ?? ''),
+      : String(getDefaultFxRate('MXN', base) ?? ''),
   )
   const [paidBy, setPaidBy] = useState(editing ? editing.paidBy : currentMemberId)
   const [description, setDescription] = useState(editing ? editing.description : '')
@@ -73,7 +73,9 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
   )
   const [receiptBusy, setReceiptBusy] = useState(false)
   const [expenseDate, setExpenseDate] = useState(editing ? editing.expenseDate : todayISO())
-  const [splitType, setSplitType] = useState<SplitType>(editing ? editing.splitType : 'equal')
+  const [splitMode, setSplitMode] = useState<SplitMode>(editing?.splitType === 'exact' ? 'exact' : 'equal')
+  const [participantMode, setParticipantMode] = useState<'all' | 'some'>(editing && editingSplits.length < members.length ? 'some' : 'all')
+  const [percentageTexts, setPercentageTexts] = useState<Record<string, string>>({})
   const [subsetIds, setSubsetIds] = useState<Set<string>>(
     () =>
       new Set(
@@ -117,36 +119,34 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
   const fxRate = currency === base ? 1 : Number(fxRateText)
   const fxValid = Number.isFinite(fxRate) && fxRate > 0
 
-  const exactByMember = new Map(
-    members.map((m) => [m.id, parseAmountToCents(exactTexts[m.id] ?? '') ?? 0]),
-  )
-  const exactSum = [...exactByMember.values()].reduce((a, b) => a + b, 0)
-  const exactDiff = (amountCents ?? 0) - exactSum
-
-  const participants = members
-    .filter((m) => {
-      if (splitType === 'equal') return true
-      if (splitType === 'subset') return subsetIds.has(m.id)
-      return (exactByMember.get(m.id) ?? 0) > 0
-    })
-    .map((m) => m.id)
-
-  const canSave =
-    amountCents !== null &&
-    amountCents > 0 &&
-    description.trim() !== '' &&
-    expenseDate !== '' &&
-    fxValid &&
-    participants.length > 0 &&
-    (splitType !== 'exact' || exactDiff === 0)
+  const selectedMembers = members.filter((m) => participantMode === 'all' || subsetIds.has(m.id))
+  const participants = selectedMembers.map((m) => m.id)
+  const splitType: SplitType = splitMode === 'equal' ? (participantMode === 'all' ? 'equal' : 'subset') : 'exact'
+  const exactByMember = new Map(selectedMembers.map((m) => [m.id, parseAmountToCents(exactTexts[m.id] || '0')]))
+  const exactValid = [...exactByMember.values()].every((value) => value !== null && value >= 0)
+  const exactSum = [...exactByMember.values()].reduce<number>((sum, value) => sum + (value ?? 0), 0)
+  const weights = Object.fromEntries(selectedMembers.map((m) => [m.id, parseAmountToCents(percentageTexts[m.id] || '0')]))
+  const percentSum = Object.values(weights).reduce<number>((sum, value) => sum + (value ?? 0), 0)
+  const percentagesValid = Object.values(weights).every((value) => value !== null && value >= 0 && value <= 10000) && percentSum === 10000
+  let shares: Record<string, number> = {}
+  if (splitMode === 'exact') shares = Object.fromEntries([...exactByMember].map(([key, value]) => [key, value ?? 0]))
+  else if (amountCents !== null && amountCents > 0 && participants.length) {
+    if (splitMode === 'percentage' && percentagesValid) shares = percentageShares(amountCents, weights as Record<string, number>)
+    if (splitMode === 'equal') shares = Object.fromEntries(computeSplits({ expenseId: '', amountCents, paidBy, splitType, participants }).map((split) => [split.memberId, split.shareCents]))
+  }
+  const assigned = Object.values(shares).reduce((sum, value) => sum + value, 0)
+  const remaining = (amountCents ?? 0) - assigned
+  const splitValid = participants.length > 0 && (splitMode === 'exact' ? exactValid && exactSum === amountCents : splitMode === 'percentage' ? percentagesValid : true)
+  const canSave = amountCents !== null && amountCents > 0 && description.trim() !== '' && expenseDate !== '' && fxValid && splitValid
+  const payerName = members.find((m) => m.id === paidBy)?.name ?? 'quien pagó'
+  const currencySymbol = new Intl.NumberFormat('es-MX', { style: 'currency', currency }).formatToParts(0).find((part) => part.type === 'currency')?.value ?? currency
 
   const toggleSubset = (memberId: string) => {
-    setSubsetIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(memberId)) next.delete(memberId)
-      else next.add(memberId)
-      return next
-    })
+    const next = new Set(participantMode === 'all' ? members.map((m) => m.id) : subsetIds)
+    if (next.has(memberId)) next.delete(memberId)
+    else next.add(memberId)
+    setSubsetIds(next)
+    setParticipantMode('some')
   }
 
   const selectCurrency = (next: Currency) => {
@@ -195,9 +195,8 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
         paidBy,
         splitType,
         participants,
-        exactShares: splitType === 'exact' ? Object.fromEntries(exactByMember) : undefined,
+        exactShares: splitType === 'exact' ? shares : undefined,
       })
-      rememberLastCurrency(currency, base)
       if (currency !== base) rememberFxRate(currency, base, fxRate)
       void ledgerStore.saveExpense(expense, splits)
       navigate(-1)
@@ -218,17 +217,12 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
       <div className="amount-panel">
         <label htmlFor="amount" className={fieldLabel}>
-          Monto total · {currency}
+          Monto total <span className="sr-only">en {currency}</span>
         </label>
-        <input
-          id="amount"
-          inputMode="decimal"
-          autoFocus={!editing}
-          placeholder="0,00"
-          value={amountText}
-          onChange={(e) => setAmountText(e.target.value)}
-          className="w-full rounded-xl border border-slate-300 bg-surface px-4 py-3 text-2xl font-bold tabular-nums text-slate-900"
-        />
+        <div className="amount-input-row">
+          <span className="amount-currency" aria-hidden="true">{CURRENCY_SYMBOLS[currency]}</span>
+          <AmountInput value={amountText} onChange={setAmountText} autoFocus={!editing} />
+        </div>
       </div>
 
       <div>
@@ -320,7 +314,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
               aria-pressed={value === category}
               className={`${chipBase} flex-col gap-1 ${value === category ? chipOn : chipOff}`}
             >
-              <DesignIcon name={value} size={20} />
+              <span className="category-icon-tile"><DesignIcon name={value} size={20} /></span>
               <span>{CATEGORY_LABELS[value]}</span>
             </button>
           ))}
@@ -379,71 +373,58 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
             />
           </label>
         )}
-        <p className="mt-1 text-xs text-slate-500">La foto se comprime y queda disponible sin conexión.</p>
       </div>
 
       </div>
 
-      <div>
-        <span className={fieldLabel}>División del gasto</span>
-        <div className="grid grid-cols-3 gap-2">
-          {(Object.keys(SPLIT_LABELS) as SplitType[]).map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => setSplitType(type)}
-              aria-pressed={type === splitType}
-              className={`${chipBase} ${type === splitType ? chipOn : chipOff}`}
-            >
-              {SPLIT_LABELS[type]}
-            </button>
-          ))}
+      <section className="split-section" aria-labelledby="split-heading">
+        <div className="split-title"><h2 id="split-heading">División del gasto</h2><span>{participants.length} de {members.length} seleccionados</span></div>
+        <fieldset>
+          <legend>¿Entre quiénes se divide?</legend>
+          <div className="split-segments participants-segments">
+            <button type="button" aria-pressed={participantMode === 'all'} onClick={() => setParticipantMode('all')}><DesignIcon name="group" size={18} />Todos ({members.length})</button>
+            <button type="button" aria-pressed={participantMode === 'some'} onClick={() => setParticipantMode('some')}><DesignIcon name="group" size={18} />Algunos ({subsetIds.size})</button>
+          </div>
+          <div className="participant-chips" role="group" aria-label="Participantes del gasto">
+            {[...members].sort((a, b) => Number(participants.includes(b.id)) - Number(participants.includes(a.id))).map((member) => {
+              const selected = participants.includes(member.id)
+              return <button key={member.id} type="button" aria-pressed={selected} onClick={() => toggleSubset(member.id)}><MemberAvatar member={member} size={24} /><span>{member.name}</span><span aria-hidden="true">{selected ? '✓' : '+'}</span></button>
+            })}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Modalidad de división</legend>
+          <div className="split-segments mode-segments">
+            {(Object.keys(SPLIT_LABELS) as SplitMode[]).map((mode) => <button key={mode} type="button" aria-pressed={splitMode === mode} onClick={() => setSplitMode(mode)}>{SPLIT_LABELS[mode]}</button>)}
+          </div>
+        </fieldset>
+        <div className="allocation-card">
+          <div className="allocation-heading"><h3><DesignIcon name="payment" size={18} />{splitMode === 'exact' ? 'Asignar importe por persona' : splitMode === 'percentage' ? 'Asignar porcentaje por persona' : 'Importe por persona'}</h3><span>Moneda: {currency}</span></div>
+          {selectedMembers.map((member) => <div key={member.id} className="allocation-row">
+            <MemberAvatar member={member} size={40} />
+            <div className="allocation-person"><strong>{member.name}</strong><small>{member.id === paidBy ? 'Pagó el gasto' : `Debe a ${payerName}`}</small></div>
+            {splitMode === 'equal' ? <strong className="allocation-value">{formatCents(shares[member.id] ?? 0, currency)}</strong> : <label className="allocation-input"><span aria-hidden="true">{splitMode === 'percentage' ? '%' : currencySymbol}</span><input aria-label={`${splitMode === 'percentage' ? 'Porcentaje' : 'Importe'} de ${member.name}`} inputMode="decimal" placeholder="0.00" onBlur={(event) => {
+              const value = parseAmountToCents(event.target.value)
+              if (value !== null && event.target.value.trim() !== '') {
+                const update = splitMode === 'percentage' ? setPercentageTexts : setExactTexts
+                update((previous) => ({ ...previous, [member.id]: (value / 100).toFixed(2) }))
+              }
+            }} value={(splitMode === 'percentage' ? percentageTexts : exactTexts)[member.id] ?? ''} onChange={(event) => {
+              const update = splitMode === 'percentage' ? setPercentageTexts : setExactTexts
+              update((previous) => ({ ...previous, [member.id]: event.target.value }))
+            }} /></label>}
+          </div>)}
+          {participants.length === 0 && <p className="py-4 text-sm text-danger">Selecciona al menos una persona.</p>}
+          <div className="allocation-footer" aria-live="polite">
+            <p><span>Total asignado</span><strong>{formatCents(assigned, currency)}</strong></p>
+            <div className={`allocation-status ${splitValid && amountCents && amountCents > 0 ? 'is-balanced' : 'is-incomplete'}`}>
+              <span>{splitMode === 'percentage' && !percentagesValid ? `Asignado: ${(percentSum / 100).toLocaleString('es-MX')}% de 100%` : splitMode === 'exact' && !exactValid ? 'Revisa los importes' : splitValid && amountCents && amountCents > 0 ? '✓ Suma completa y cuadrada' : 'Reparto por completar'}</span>
+              <strong>Restante: {formatCents(remaining, currency)}</strong>
+            </div>
+            {splitMode === 'percentage' && <small className="mt-2 block text-slate-500">Al guardar, los porcentajes se convierten en importes exactos por persona.</small>}
+          </div>
         </div>
-
-        {splitType === 'subset' && (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {members.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => toggleSubset(m.id)}
-                aria-pressed={subsetIds.has(m.id)}
-                className={`${chipBase} ${subsetIds.has(m.id) ? chipOn : chipOff}`}
-              >
-                {m.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {splitType === 'exact' && (
-          <div className="split-preview mt-3 flex flex-col gap-2">
-            {members.map((m) => (
-              <label key={m.id} className="flex items-center gap-3">
-                <span className="w-20 shrink-0 text-sm font-semibold text-slate-700">{m.name}</span>
-                <input
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  value={exactTexts[m.id] ?? ''}
-                  onChange={(e) =>
-                    setExactTexts((prev) => ({ ...prev, [m.id]: e.target.value }))
-                  }
-                  className="min-h-11 w-full rounded-xl border border-slate-300 bg-surface px-3 tabular-nums text-slate-900"
-                />
-              </label>
-            ))}
-            <p className="flex justify-between text-xs text-slate-500"><span>Total asignado</span><strong>{formatCents(exactSum, currency)}</strong></p>
-            {amountCents !== null && exactDiff === 0 && <p className="text-xs text-success">Suma completa y cuadrada</p>}
-            {amountCents !== null && exactDiff !== 0 && (
-              <p className="text-sm font-semibold text-danger">
-                {exactDiff > 0
-                  ? `Faltan ${formatCents(exactDiff, currency)}`
-                  : `Sobran ${formatCents(-exactDiff, currency)}`}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+      </section>
 
       {formError && (
         <p role="alert" className="text-sm font-semibold text-danger">
@@ -457,12 +438,12 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
           onClick={() => navigate(-1)}
           className="min-h-14 flex-1 rounded-2xl border border-slate-300 bg-surface font-bold text-slate-700 active:bg-slate-100"
         >
-          Cancelar
+          Descartar borrador
         </button>
         <button
           type="submit"
           disabled={!canSave || receiptBusy}
-          className="min-h-14 flex-[2] rounded-2xl bg-accent-600 text-lg font-bold text-on-accent shadow-md transition active:scale-[0.98] active:bg-accent-700 disabled:bg-slate-300 disabled:text-slate-600"
+          className="inline-flex items-center justify-center gap-2 min-h-14 flex-[2] rounded-2xl bg-accent-600 text-lg font-bold text-on-accent shadow-md transition active:scale-[0.98] active:bg-accent-700 disabled:bg-slate-300 disabled:text-slate-600"
         >
           <DesignIcon name="save" size={18} /> Guardar gasto
         </button>
