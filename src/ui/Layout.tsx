@@ -86,7 +86,7 @@ export function Layout() {
 
       {!formPage && <nav className="bottom-nav fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-lg items-center gap-4 px-5 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3">
         <NavLink to="/" end className={tabClass}>
-          <DesignIcon name="wallet" />
+          <span aria-hidden="true" className="nav-tab-icon nav-tab-icon-wallet" />
           Balances
         </NavLink>
         <Link
@@ -97,7 +97,7 @@ export function Layout() {
           <DesignIcon name="plus" />
         </Link>
         <NavLink to="/history" className={tabClass}>
-          <DesignIcon name="history" />
+          <span aria-hidden="true" className="nav-tab-icon nav-tab-icon-history" />
           Historial
         </NavLink>
       </nav>}

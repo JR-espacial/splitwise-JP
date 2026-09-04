@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { signInWithGoogle } from '../auth'
+import { sendMagicLink, signInWithGoogle } from '../auth'
 
-const { oauth } = vi.hoisted(() => ({ oauth: vi.fn() }))
+const { oauth, otp } = vi.hoisted(() => ({ oauth: vi.fn(), otp: vi.fn() }))
 vi.mock('../supabaseClient', () => ({
-  getSupabase: () => ({ auth: { signInWithOAuth: oauth } }),
+  getSupabase: () => ({ auth: { signInWithOAuth: oauth, signInWithOtp: otp } }),
 }))
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks() })
 
@@ -25,5 +25,24 @@ describe('Google sign-in', () => {
     const error = new Error('Provider unavailable')
     oauth.mockResolvedValue({ error })
     await expect(signInWithGoogle()).rejects.toBe(error)
+  })
+})
+
+describe('Magic-link sign-in', () => {
+  it('normalizes the email and returns to the hosted app root', async () => {
+    vi.stubGlobal('window', { location: { origin: 'https://splitwise-jp.vercel.app' } })
+    otp.mockResolvedValue({ error: null })
+    await sendMagicLink('  Paulina@Example.com ')
+    expect(otp).toHaveBeenCalledWith({
+      email: 'paulina@example.com',
+      options: { emailRedirectTo: 'https://splitwise-jp.vercel.app/' },
+    })
+  })
+
+  it('reports an email provider failure', async () => {
+    vi.stubGlobal('window', { location: { origin: 'https://splitwise-jp.vercel.app' } })
+    const error = new Error('Email unavailable')
+    otp.mockResolvedValue({ error })
+    await expect(sendMagicLink('paulina@example.com')).rejects.toBe(error)
   })
 })

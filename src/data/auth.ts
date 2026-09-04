@@ -20,8 +20,8 @@ export async function signInWithGoogle(): Promise<void> {
 
 export async function sendMagicLink(email: string): Promise<void> {
   const { error } = await getSupabase().auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.origin },
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: `${window.location.origin}/` },
   })
   if (error) throw error
 }

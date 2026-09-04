@@ -21,9 +21,9 @@ backend, deploy en Vercel.
 
 ## Setup
 
-### Acceso con Google
+### Acceso con Google o enlace mágico
 
-La versión pública usa Google como acceso principal. Google Cloud tiene el
+La versión pública permite elegir Google o un enlace mágico enviado por correo. Google Cloud tiene el
 proyecto `roadtrip-europa-2026`, cliente web y audiencia en producción.
 Las credenciales están guardadas en Supabase y el panel muestra Google habilitado.
 La actualización se publicó en Vercel el 3 de septiembre de 2026.
