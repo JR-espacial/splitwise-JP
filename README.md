@@ -4,6 +4,21 @@ Nuestra versión de Splitwise: PWA mobile-first para 4 personas. React + Vite +
 TypeScript + Tailwind en el cliente, Supabase (Postgres + Realtime) como
 backend, deploy en Vercel.
 
+## Sitio publicado
+
+- Aplicación: https://splitwise-jp.vercel.app/
+- Proyecto de Vercel: https://vercel.com/pawis-dev/splitwise-jp
+- El despliegue inicial se publicó como archivos estáticos compilados con
+  `npm run build`, incluyendo `vercel.json`. No está conectado a GitHub:
+  los cambios del repositorio no se publican automáticamente.
+- Para actualizar este despliegue, compila con las variables de Supabase
+  configuradas y publica el contenido de `dist/` junto con `vercel.json`
+  en el mismo proyecto de Vercel.
+- En Supabase, configura la URL del sitio y la URL de redirección de Auth
+  como `https://splitwise-jp.vercel.app` para los enlaces mágicos.
+  Verificado en el panel de Supabase: Site URL y Redirect URLs incluyen
+  `https://splitwise-jp.vercel.app/`.
+
 ## Setup
 
 1. **Supabase**: crea un proyecto gratis en [supabase.com](https://supabase.com).
