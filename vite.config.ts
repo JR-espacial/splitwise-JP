@@ -14,7 +14,7 @@ export default defineConfig({
       includeAssets: ['icons/boyo-*.png'],
       manifest: {
         name: 'Europa 2026',
-        short_name: 'Roadtrip',
+        short_name: 'Eurotrip',
         description: 'Gastos compartidos del roadtrip',
         start_url: '/',
         display: 'standalone',

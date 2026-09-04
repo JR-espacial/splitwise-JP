@@ -84,7 +84,7 @@ function LedgerApp({ sessionEmail }: { sessionEmail: string }) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-slate-50 px-6 text-center">
         <p className="font-semibold text-slate-900">
-          {sessionEmail} no está en el grupo del roadtrip.
+          {sessionEmail} no está en el grupo del viaje.
         </p>
         <p className="text-sm text-slate-500">
           Pide que agreguen tu correo a la tabla de miembros, o entra con otro correo.
