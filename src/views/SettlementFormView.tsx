@@ -50,6 +50,7 @@ export function SettlementFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
           fromMember,
           toMember,
           amountCents,
+          baseCurrency: snapshot.group.baseCurrency,
           settlementDate,
           createdBy: currentMemberId,
           updatedBy: currentMemberId,

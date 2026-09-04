@@ -53,7 +53,13 @@ describe('formatCents', () => {
 
   it('formats leading-symbol currencies', () => {
     expect(formatCents(1999, 'USD')).toBe('US$19,99')
-    expect(formatCents(1999, 'MXN')).toBe('MX$19,99')
+    expect(formatCents(1999, 'MXN')).toBe('MX$19.99')
+  })
+
+  it('formats Mexican pesos with local separators and HUF with its symbol', () => {
+    expect(formatCents(123456, 'MXN')).toBe('MX$1,234.56')
+    expect(formatCents(-501, 'MXN')).toBe('-MX$5.01')
+    expect(formatCents(123456, 'HUF')).toBe('1.234,56 Ft')
   })
 
   it('pads decimals', () => {

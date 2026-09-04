@@ -54,12 +54,12 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
   const [amountText, setAmountText] = useState(editing ? centsToText(editing.amountCents) : '')
   const [currency, setCurrency] = useState<Currency>(
-    editing ? editing.currency : getLastCurrency() ?? base,
+    editing ? editing.currency : getLastCurrency(base) ?? base,
   )
   const [fxRateText, setFxRateText] = useState(() =>
     editing
       ? String(editing.fxRateToBase)
-      : String(getDefaultFxRate(getLastCurrency() ?? base)),
+      : String(getDefaultFxRate(getLastCurrency(base) ?? base, base) ?? ''),
   )
   const [paidBy, setPaidBy] = useState(editing ? editing.paidBy : currentMemberId)
   const [description, setDescription] = useState(editing ? editing.description : '')
@@ -89,12 +89,16 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
   // Frozen rates of existing expenses are never auto-updated.
   const [fxEdited, setFxEdited] = useState(editing !== null)
   const [fxIsAuto, setFxIsAuto] = useState(false)
+  const [fxLoading, setFxLoading] = useState(false)
 
   useEffect(() => {
     if (fxEdited || currency === base) return
     let cancelled = false
-    void getAutoFxRate(currency).then((rate) => {
-      if (cancelled || rate === null) return
+    setFxLoading(true)
+    void getAutoFxRate(currency, base).then((rate) => {
+      if (cancelled) return
+      setFxLoading(false)
+      if (rate === null) return
       setFxRateText(String(rate))
       setFxIsAuto(true)
     })
@@ -145,8 +149,9 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
   const selectCurrency = (next: Currency) => {
     setCurrency(next)
+    setFxLoading(false)
     if (next !== base) {
-      setFxRateText(String(getDefaultFxRate(next)))
+      setFxRateText(String(next === editing?.currency ? editing.fxRateToBase : getDefaultFxRate(next, base) ?? ''))
       setFxIsAuto(false)
       if (!editing) setFxEdited(false) // let the daily rate take over again
     }
@@ -168,6 +173,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
       amountCents,
       currency,
       fxRateToBase: fxRate,
+      baseCurrency: base,
       description: description.trim(),
       expenseDate,
       splitType,
@@ -189,8 +195,8 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
         participants,
         exactShares: splitType === 'exact' ? Object.fromEntries(exactByMember) : undefined,
       })
-      rememberLastCurrency(currency)
-      if (currency !== base) rememberFxRate(currency, fxRate)
+      rememberLastCurrency(currency, base)
+      if (currency !== base) rememberFxRate(currency, base, fxRate)
       void ledgerStore.saveExpense(expense, splits)
       navigate(-1)
     } catch (error) {
@@ -227,7 +233,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
 
       <div>
         <span className={fieldLabel}>Moneda</span>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {CURRENCIES.map((c) => (
             <button
               key={c}
@@ -239,6 +245,9 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
             </button>
           ))}
         </div>
+        <p className="mt-2 text-sm text-slate-500">
+          {base === 'MXN' ? 'Si pagaste con tarjeta, puedes registrar en MXN el cargo que aparece en tu banco. Para efectivo, usa la moneda original.' : `Los balances y pagos se calculan en ${base}.`}
+        </p>
       </div>
 
       {currency !== base && (
@@ -252,6 +261,7 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
             value={fxRateText}
             onChange={(e) => {
               setFxRateText(e.target.value.replace(',', '.'))
+              setFxLoading(false)
               setFxEdited(true)
               setFxIsAuto(false)
             }}
@@ -261,8 +271,9 @@ export function ExpenseFormView({ snapshot }: { snapshot: LedgerSnapshot }) {
             {amountCents !== null && fxValid && (
               <>≈ {formatCents(toBaseCents(amountCents, fxRate), base)} · </>
             )}
-            {fxIsAuto ? 'tasa del día (BCE), editable' : 'tasa manual'}
+            {fxLoading ? 'Consultando tipo de cambio…' : fxIsAuto ? 'tasa de referencia (BCE), editable' : fxValid ? 'tasa manual guardada con el gasto' : 'Consulta el cambio o introduce una tasa para continuar'}
           </p>
+          <p className="mt-1 text-xs text-slate-500">La tasa es orientativa y puede diferir del cargo del banco. Queda fija al guardar.</p>
         </div>
       )}
 

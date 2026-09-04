@@ -99,7 +99,7 @@ function LedgerApp({ sessionEmail }: { sessionEmail: string }) {
     <IdentityContext.Provider value={identity}>
       <BrowserRouter>
         <Routes>
-          <Route element={<Layout key={identity.currentMemberId} />}>
+          <Route element={<Layout key={`${identity.currentMemberId}:${snapshot.group.baseCurrency}`} />}>
             <Route path="/" element={<BalancesView snapshot={snapshot} />} />
             <Route path="/history" element={<HistoryView snapshot={snapshot} />} />
             <Route path="/expense/new" element={<ExpenseFormView snapshot={snapshot} />} />

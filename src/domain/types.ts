@@ -1,4 +1,4 @@
-export const CURRENCIES = ['EUR', 'CZK', 'MXN', 'USD', 'CHF'] as const
+export const CURRENCIES = ['MXN', 'EUR', 'CZK', 'CHF', 'HUF', 'USD'] as const
 export type Currency = (typeof CURRENCIES)[number]
 
 export type SplitType = 'equal' | 'subset' | 'exact'
@@ -40,6 +40,8 @@ export interface Expense {
   currency: Currency
   /** Frozen at capture time. 1 when currency === group base currency. */
   fxRateToBase: number
+  /** Base used when the rate was captured; absent only in legacy EUR entries. */
+  baseCurrency?: Currency
   description: string
   /** ISO date (yyyy-mm-dd). */
   expenseDate: string
@@ -69,6 +71,7 @@ export interface Settlement {
   fromMember: string
   toMember: string
   amountCents: number
+  baseCurrency?: Currency
   /** ISO date (yyyy-mm-dd). Falls back to createdAt for legacy rows. */
   settlementDate?: string
   createdBy?: string | null

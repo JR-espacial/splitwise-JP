@@ -212,6 +212,56 @@ describe('SyncEngine.pull', () => {
     await db.groups.put(GROUP)
   })
 
+  it('refreshes all cached rows atomically when the group changes to MXN', async () => {
+    const old = makeExpense('e1', '2026-06-10T10:00:00+00:00')
+    await db.expenses.put(old)
+    await db.splits.bulkPut(splitsOf(old))
+    await db.meta.put({ key: 'expensesSince', value: '2026-06-11T00:00:00+00:00' })
+    remote.expenses.set(old.id, { expense: { ...old, baseCurrency: 'MXN', fxRateToBase: 19.7593 }, splits: splitsOf(old) })
+    const pull = remote.pullSince.bind(remote)
+    remote.pullSince = async (a, b) => ({ ...await pull(a, b), group: { ...GROUP, baseCurrency: 'MXN' } })
+    await engine.pull()
+    expect(remote.pullCalls).toHaveLength(2)
+    expect(remote.pullCalls[1]).toEqual({ expensesSince: null, settlementsSince: null })
+    expect((await db.groups.get(GROUP.id))?.baseCurrency).toBe('MXN')
+    expect((await db.expenses.get(old.id))?.fxRateToBase).toBe(19.7593)
+    expect((await db.expenses.get(old.id))?.amountCents).toBe(old.amountCents)
+  })
+
+  it('does not mix pending EUR writes with a newly migrated MXN group', async () => {
+    const local = makeExpense('pending', '2026-06-10T10:00:00+00:00')
+    await db.outbox.add({ kind: 'expense', entityId: local.id, expense: local, splits: splitsOf(local) })
+    const pull = remote.pullSince.bind(remote)
+    remote.pullSince = async (a, b) => ({ ...await pull(a, b), group: { ...GROUP, baseCurrency: 'MXN' } })
+    await expect(engine.pull()).rejects.toThrow('otra moneda base')
+    expect((await db.groups.get(GROUP.id))?.baseCurrency).toBe('EUR')
+    expect(await db.outbox.count()).toBe(1)
+  })
+
+  it('rebases and sends an unsynced EUR expense after the real group migrates', async () => {
+    const group = { ...GROUP, id: '11111111-1111-4111-8111-111111111111' }
+    await db.groups.clear()
+    await db.groups.put(group)
+    const local = { ...makeExpense('pending', '2026-06-10T10:00:00+00:00'), groupId: group.id }
+    await db.expenses.put(local)
+    await db.splits.bulkPut(splitsOf(local))
+    await db.outbox.add({ kind: 'expense', entityId: local.id, expense: local, splits: splitsOf(local) })
+    const pull = remote.pullSince.bind(remote)
+    remote.pullSince = async (a, b) => ({ ...await pull(a, b), group: { ...group, baseCurrency: 'MXN' } })
+    await engine.pull()
+    await flush()
+    expect((await db.groups.get(group.id))?.baseCurrency).toBe('MXN')
+    expect(await db.outbox.count()).toBe(0)
+    expect(remote.pushedExpenseIds).toEqual(['pending'])
+    const expense = remote.expenses.get('pending')!.expense
+    expect(expense.amountCents).toBe(local.amountCents)
+    expect(expense.fxRateToBase).toBe(19.7593)
+    expect(expense.baseCurrency).toBe('MXN')
+    expect(await db.splits.where('expenseId').equals(local.id).toArray()).toEqual(splitsOf(local))
+    await engine.pull()
+    expect((await db.expenses.get(local.id))?.fxRateToBase).toBe(19.7593)
+  })
+
   it('pulls incrementally using the max updated_at as cursor', async () => {
     remote.expenses.set('e1', {
       expense: makeExpense('e1', '2026-06-10T10:00:00+00:00'),

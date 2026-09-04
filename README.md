@@ -14,6 +14,8 @@ backend, deploy en Vercel.
    - `supabase/migrations/0003_auth_rls.sql` — **antes de ejecutarla, edita
      los correos placeholder** con los correos reales de los 4 miembros
    - `supabase/migrations/0004_expense_details.sql`
+   - `supabase/migrations/0005_huf_and_explicit_base.sql`
+   - `supabase/migrations/0006_switch_group_to_mxn.sql` — convierte el historial de prueba confirmado a MXN con la tasa de referencia del 3 de septiembre de 2026.
 
    (O con la CLI: `supabase link --project-ref <ref> && supabase db push`.)
 
@@ -57,3 +59,31 @@ Las reglas de dinero, soft deletes y la arquitectura están documentadas en
 - Categorías, búsqueda, filtros y exportación CSV.
 - Detalle del reparto y comprobantes fotográficos disponibles sin conexión.
 - Autoría y bitácora de cambios por movimiento.
+
+## Monedas y conversión a MXN
+
+El grupo nuevo usa MXN para balances, totales y pagos entre integrantes. Se
+pueden capturar gastos en MXN, EUR, CZK, CHF, HUF y USD. El formulario consulta
+[Frankfurter v1 (BCE)](https://frankfurter.dev/v1/) con la moneda base del grupo,
+conserva la tasa al guardar y permite editarla. La tasa de referencia puede
+diferir de la del banco: para tarjetas se puede registrar directamente el cargo
+en MXN. Si no hay conexión, usa la tasa guardada; si tampoco existe, requiere
+una tasa manual y nunca inventa una.
+
+Para un grupo existente, no basta con editar `groups.base_currency`: las tasas
+congeladas y los pagos anteriores están denominados en EUR. La migración 0006
+es transaccional e idempotente: convierte el historial de prueba confirmado
+(incluso borrado) con 1 EUR = 19.7593 MXN, referencia del 2026-09-03. Conserva
+los importes y repartos en moneda original; actualiza las tasas congeladas a
+MXN y convierte los pagos anteriores a centavos mexicanos. Los gastos cuya
+moneda original ya es MXN usan tasa 1. No usar esa tasa para migrar un historial
+real sin antes acordar la fecha/tasa y revisar los cargos del banco. Sincronicen los cuatro dispositivos antes del cambio.
+Las columnas `base_currency` de gastos/pagos impiden que una versión antigua
+suba importes en EUR como si fueran MXN. Las cachés de tipos de cambio se separan
+por moneda base. Hasta migrar el grupo, el cliente sigue calculando en EUR.
+
+Si un dispositivo tiene cambios pendientes de antes de esa migración, el motor
+los convierte una sola vez con la misma tasa 19.7593 (solo para este grupo),
+conserva sus identificadores/repartos y reintenta enviarlos. La conversión de la
+cola y la actualización de la base local son atómicas. Un error del servidor
+se muestra en la banda de sincronización en lugar de quedar oculto.

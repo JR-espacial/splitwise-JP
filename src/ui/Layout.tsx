@@ -57,9 +57,9 @@ export function Layout() {
         </button>
       </header>
 
-      {sync && (!sync.online || sync.pendingCount > 0) && (
+      {sync && (!sync.online || sync.pendingCount > 0 || sync.error) && (
         <div role="status" className="animate-rise bg-amber-500 px-4 py-1.5 text-center text-sm font-semibold text-amber-950">
-          {sync.online
+          {sync.online && sync.error ? `No se pudo sincronizar: ${sync.error}` : sync.online
             ? `Sincronizando ${sync.pendingCount} ${sync.pendingCount === 1 ? 'cambio' : 'cambios'}…`
             : 'Sin conexión — tus cambios se guardan en este teléfono'}
         </div>

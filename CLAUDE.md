@@ -35,11 +35,11 @@ available offline and follow the same outbox/LWW sync path.
 - **All amounts are integer cents** (`amount_cents`, `share_cents`). Never use
   floats for money. User input is parsed with string math
   (`parseAmountToCents`), never `parseFloat(x) * 100`.
-- **Multi-currency**: EUR, CZK, MXN, USD, CHF. Each expense stores its original
+- **Multi-currency**: MXN, EUR, CZK, CHF, HUF, USD. Each expense stores its original
   currency plus `fx_rate_to_base` **frozen at capture time**. New expenses
   prefill the ECB daily rate (`fxService`, Frankfurter API, 12h localStorage
   cache, stale cache offline), falling back to the last manually used rate;
-  always editable, and editing an expense never touches its frozen rate. The
+  always editable; no guessed rates when unavailable. Caches are keyed by base currency, and editing an expense never touches its frozen rate. The
   rate itself is not money, so float multiplication + `Math.round` is fine
   (`toBaseCents`).
 - **Split rounding**: equal/subset shares are `floor(amount / n)`; the
@@ -50,7 +50,7 @@ available offline and follow the same outbox/LWW sync path.
   function `computeBalances` from non-deleted expenses + settlements. Each
   share is converted to base individually and the payer is credited with the
   sum of converted shares, so balances always sum to exactly zero.
-- **Settlements** are always denominated in the group base currency (EUR).
+- **Settlements** are always denominated in the group base currency (MXN for new groups; existing EUR ledgers require migrations 0005–0006).
 - Settle-up suggestions come from `suggestSettlements` (greedy largest creditor
   vs largest debtor).
 

@@ -1,14 +1,24 @@
 import type { LedgerDB } from './db'
+import { rebasePending } from './rebasePending'
 import type { RemoteApi } from './remote'
 
 export interface SyncStatus {
   online: boolean
   pendingCount: number
+  error?: string | null
 }
 
 const BACKOFF_MS = [2000, 4000, 8000, 16000, 30000] as const
 const META_EXPENSES_SINCE = 'expensesSince'
 const META_SETTLEMENTS_SINCE = 'settlementsSince'
+
+function syncErrorMessage(error: unknown): string {
+  // PostgREST errors are plain objects, not Error instances.
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message
+  }
+  return 'No se pudo sincronizar. Se volverá a intentar automáticamente.'
+}
 
 /** navigator.onLine is unreliable-but-useful; absent (tests) means online. */
 function isOnline(): boolean {
@@ -33,6 +43,7 @@ function maxISO(values: string[]): string | null {
  * then comes back with a newer timestamp on a later pull.
  */
 export class SyncEngine {
+  private syncError: string | null = null
   private pushing = false
   private pushAttempt = 0
   private pushTimer: ReturnType<typeof setTimeout> | null = null
@@ -66,6 +77,7 @@ export class SyncEngine {
       document.addEventListener('visibilitychange', handleVisible)
     }
 
+    void this.requestPull() // Recover base changes even without a realtime connection.
     this.requestPush() // drain anything left over from a previous session
     void this.emitStatus()
 
@@ -104,8 +116,9 @@ export class SyncEngine {
     this.pulling = true
     try {
       await this.pull()
-    } catch {
-      // Transient pull failures are fine; the next trigger retries.
+    } catch (error) {
+      this.syncError = syncErrorMessage(error)
+      await this.emitStatus()
     } finally {
       this.pulling = false
       if (this.pullQueued) {
@@ -133,9 +146,13 @@ export class SyncEngine {
         await this.emitStatus()
       }
       this.pushAttempt = 0
+      this.syncError = null
       // Reconcile server-assigned updated_at timestamps.
       if (pushedSomething) void this.requestPull()
-    } catch {
+    } catch (error) {
+      this.syncError = syncErrorMessage(error)
+      // A rejected EUR write may mean the server migrated to MXN while offline.
+      void this.requestPull()
       const delay = BACKOFF_MS[Math.min(this.pushAttempt, BACKOFF_MS.length - 1)]!
       this.pushAttempt += 1
       this.pushTimer = setTimeout(() => {
@@ -152,10 +169,15 @@ export class SyncEngine {
     const expensesSince = (await this.db.meta.get(META_EXPENSES_SINCE))?.value ?? null
     const settlementsSince = (await this.db.meta.get(META_SETTLEMENTS_SINCE))?.value ?? null
 
-    const result = await this.remote.pullSince(expensesSince, settlementsSince)
+    let result = await this.remote.pullSince(expensesSince, settlementsSince)
+    const localGroup = await this.db.groups.toCollection().first()
+    if (result.group && localGroup && result.group.baseCurrency !== localGroup.baseCurrency) {
+      // A base switch affects every frozen rate and payment, including older rows.
+      result = await this.remote.pullSince(null, null)
+    }
     if (!result.group) return
 
-    const pendingIds = new Set((await this.db.outbox.toArray()).map((e) => e.entityId))
+    let rebasedCount = 0
 
     await this.db.transaction(
       'rw',
@@ -166,8 +188,26 @@ export class SyncEngine {
         this.db.splits,
         this.db.settlements,
         this.db.meta,
+        this.db.outbox,
       ],
       async () => {
+        // Read the latest queue inside the same transaction as the group switch;
+        // a concurrent user edit must not be dropped or left in the old base.
+        const pending = await this.db.outbox.toArray()
+        const pendingIds = new Set(pending.map((entry) => entry.entityId))
+        for (const entry of pending) {
+          const rebased = rebasePending(entry, result.group!)
+          if (rebased === entry) continue
+          await this.db.outbox.put(rebased)
+          if (rebased.kind === 'expense') {
+            await this.db.expenses.put(rebased.expense)
+            await this.db.splits.where('expenseId').equals(rebased.entityId).delete()
+            await this.db.splits.bulkPut(rebased.splits)
+          } else {
+            await this.db.settlements.put(rebased.settlement)
+          }
+          rebasedCount += 1
+        }
         await this.db.groups.put(result.group!)
         if (result.members.length > 0) await this.db.members.bulkPut(result.members)
 
@@ -196,13 +236,16 @@ export class SyncEngine {
       },
     )
 
+    if (rebasedCount > 0) this.syncError = null
     this.onDataChange?.()
+    if (rebasedCount > 0) this.requestPush()
+    await this.emitStatus()
   }
 
   async emitStatus(): Promise<void> {
     if (this.statusListeners.size === 0) return
     const pendingCount = await this.db.outbox.count()
-    const status: SyncStatus = { online: isOnline(), pendingCount }
+    const status: SyncStatus = { online: isOnline(), pendingCount, error: this.syncError }
     for (const listener of this.statusListeners) listener(status)
   }
 }

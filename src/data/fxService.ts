@@ -1,75 +1,79 @@
 import { CURRENCIES, type Currency } from '../domain/types'
 
-/** Frankfurter (ECB daily reference rates), free and keyless. */
+/** Frankfurter v1: ECB reference rates, free and keyless. */
 const API_URL = 'https://api.frankfurter.dev/v1/latest'
-const CACHE_KEY = 'roadtrip.fxRates'
+const CACHE_KEY = (base: Currency) => `roadtrip.fxRates.v2.${base}`
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000
 
-/** Rates as fx_rate_to_base: 1 unit of currency = N EUR. */
+/** 1 unit of the original currency = N units of the group's base currency. */
 export type RatesToBase = Partial<Record<Currency, number>>
-
-interface CachedRates {
-  fetchedAtMs: number
-  rates: RatesToBase
-}
-
+interface CachedRates { fetchedAtMs: number; rates: RatesToBase }
 export interface FxServiceDeps {
   fetchFn?: typeof fetch
   storage?: Pick<Storage, 'getItem' | 'setItem'>
   nowMs?: () => number
 }
 
-function readCache(storage: Pick<Storage, 'getItem' | 'setItem'>): CachedRates | null {
+function validRate(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+}
+
+function readCache(storage: FxServiceDeps['storage'], base: Currency): CachedRates | null {
   try {
-    const raw = storage.getItem(CACHE_KEY)
+    const raw = storage?.getItem(CACHE_KEY(base))
     if (!raw) return null
     const parsed = JSON.parse(raw) as CachedRates
-    if (typeof parsed.fetchedAtMs !== 'number' || typeof parsed.rates !== 'object') return null
-    return parsed
+    if (!Number.isFinite(parsed.fetchedAtMs) || !parsed.rates || typeof parsed.rates !== 'object') return null
+    const rates: RatesToBase = { [base]: 1 }
+    for (const currency of CURRENCIES) {
+      if (currency !== base && validRate(parsed.rates[currency])) rates[currency] = parsed.rates[currency]
+    }
+    return { fetchedAtMs: parsed.fetchedAtMs, rates }
   } catch {
     return null
   }
 }
 
-/** API returns 1 EUR = N foreign; we store the inverse (1 foreign = N EUR). */
-export function invertRates(eurToForeign: Record<string, number>): RatesToBase {
-  const rates: RatesToBase = { EUR: 1 }
+/** API returns 1 base = N foreign; invert to 1 foreign = N base. */
+export function invertRates(baseToForeign: Record<string, number>, base: Currency): RatesToBase {
+  const rates: RatesToBase = { [base]: 1 }
   for (const currency of CURRENCIES) {
-    const rate = eurToForeign[currency]
-    if (typeof rate === 'number' && rate > 0) {
-      rates[currency] = Number((1 / rate).toFixed(8))
+    const rate = baseToForeign[currency]
+    if (currency !== base && validRate(rate)) {
+      const inverted = Number((1 / rate).toFixed(8))
+      if (validRate(inverted)) rates[currency] = inverted
     }
   }
   return rates
 }
 
-/**
- * Today's rate to EUR for a currency, from cache when fresh, otherwise from
- * the API; falls back to the stale cache offline and to null when nothing
- * is available (the form then keeps its manual default).
- */
+/** Cached reference rate; stale offline, null when unavailable. Never guesses a rate. */
 export async function getAutoFxRate(
   currency: Currency,
+  base: Currency,
   deps: FxServiceDeps = {},
 ): Promise<number | null> {
-  if (currency === 'EUR') return 1
+  if (currency === base) return 1
   const fetchFn = deps.fetchFn ?? fetch
-  const storage = deps.storage ?? localStorage
+  let storage = deps.storage
+  try { storage ??= localStorage } catch { /* Rates still work without browser storage. */ }
   const nowMs = deps.nowMs ?? Date.now
-
-  const cached = readCache(storage)
-  if (cached && nowMs() - cached.fetchedAtMs < CACHE_TTL_MS) {
-    return cached.rates[currency] ?? null
+  const cached = readCache(storage, base)
+  if (cached && nowMs() - cached.fetchedAtMs < CACHE_TTL_MS && cached.rates[currency]) {
+    return cached.rates[currency]!
   }
 
   try {
-    const symbols = CURRENCIES.filter((c) => c !== 'EUR').join(',')
-    const response = await fetchFn(`${API_URL}?base=EUR&symbols=${symbols}`)
+    const symbols = CURRENCIES.filter((c) => c !== base).join(',')
+    const response = await fetchFn(`${API_URL}?base=${base}&symbols=${symbols}`)
     if (!response.ok) throw new Error(`fx api: ${response.status}`)
-    const body = (await response.json()) as { rates: Record<string, number> }
-    const rates = invertRates(body.rates)
-    storage.setItem(CACHE_KEY, JSON.stringify({ fetchedAtMs: nowMs(), rates } satisfies CachedRates))
-    return rates[currency] ?? null
+    const body = (await response.json()) as { base: string; rates: Record<string, number> }
+    if (body.base !== base || !body.rates || typeof body.rates !== 'object') throw new Error('Invalid FX response')
+    const rates = invertRates(body.rates, base)
+    try {
+      storage?.setItem(CACHE_KEY(base), JSON.stringify({ fetchedAtMs: nowMs(), rates } satisfies CachedRates))
+    } catch { /* A storage failure must not discard a valid network result. */ }
+    return rates[currency] ?? cached?.rates[currency] ?? null
   } catch {
     return cached?.rates[currency] ?? null
   }

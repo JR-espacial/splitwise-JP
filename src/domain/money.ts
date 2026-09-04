@@ -6,6 +6,7 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   MXN: 'MX$',
   USD: 'US$',
   CHF: 'CHF',
+  HUF: 'Ft',
 }
 
 /**
@@ -23,9 +24,13 @@ export function formatCents(cents: number, currency: Currency): string {
   const abs = Math.abs(cents)
   const units = Math.floor(abs / 100)
   const decimals = String(abs % 100).padStart(2, '0')
+  if (currency === 'MXN') {
+    const grouped = String(units).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    return `${sign}MX$${grouped}.${decimals}`
+  }
   const grouped = String(units).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
   const symbol = CURRENCY_SYMBOLS[currency]
-  return currency === 'EUR' || currency === 'CZK'
+  return currency === 'EUR' || currency === 'CZK' || currency === 'HUF'
     ? `${sign}${grouped},${decimals} ${symbol}`
     : `${sign}${symbol}${grouped},${decimals}`
 }

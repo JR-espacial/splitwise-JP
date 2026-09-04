@@ -39,6 +39,7 @@ export interface ExpenseRow {
   amount_cents: number
   currency: Currency
   fx_rate_to_base: number | string
+  base_currency?: Currency
   description: string
   expense_date: string
   split_type: SplitType
@@ -64,6 +65,7 @@ export interface SettlementRow {
   from_member: string
   to_member: string
   amount_cents: number
+  base_currency?: Currency
   settlement_date?: string
   created_by?: string | null
   updated_by?: string | null
@@ -97,6 +99,7 @@ export const expenseFromRow = (row: ExpenseRow): Expense => ({
   currency: row.currency,
   // numeric comes back as a string from PostgREST
   fxRateToBase: Number(row.fx_rate_to_base),
+  baseCurrency: row.base_currency ?? 'EUR',
   description: row.description,
   expenseDate: row.expense_date,
   splitType: row.split_type,
@@ -117,6 +120,7 @@ export const expenseToRow = (expense: Expense): ExpenseRow => ({
   amount_cents: expense.amountCents,
   currency: expense.currency,
   fx_rate_to_base: expense.fxRateToBase,
+  ...(expense.baseCurrency && expense.baseCurrency !== 'EUR' ? { base_currency: expense.baseCurrency } : {}),
   description: expense.description,
   expense_date: expense.expenseDate,
   split_type: expense.splitType,
@@ -148,6 +152,7 @@ export const settlementFromRow = (row: SettlementRow): Settlement => ({
   fromMember: row.from_member,
   toMember: row.to_member,
   amountCents: Number(row.amount_cents),
+  baseCurrency: row.base_currency ?? 'EUR',
   settlementDate: row.settlement_date ?? row.created_at.slice(0, 10),
   createdBy: row.created_by ?? null,
   updatedBy: row.updated_by ?? null,
@@ -163,6 +168,7 @@ export const settlementToRow = (settlement: Settlement): SettlementRow => ({
   from_member: settlement.fromMember,
   to_member: settlement.toMember,
   amount_cents: settlement.amountCents,
+  ...(settlement.baseCurrency && settlement.baseCurrency !== 'EUR' ? { base_currency: settlement.baseCurrency } : {}),
   settlement_date: settlement.settlementDate ?? settlement.createdAt.slice(0, 10),
   created_by: settlement.createdBy ?? null,
   updated_by: settlement.updatedBy ?? null,

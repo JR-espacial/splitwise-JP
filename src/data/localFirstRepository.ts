@@ -35,6 +35,9 @@ export class LocalFirstRepository implements ExpenseRepository {
       this.db.splits.toArray(),
       this.db.settlements.toArray(),
     ])
+    if ([...expenses, ...settlements].some((entry) => (entry.baseCurrency ?? 'EUR') !== group.baseCurrency)) {
+      throw new Error('Hay movimientos pendientes en otra moneda base. Conéctate y revisa la migración antes de continuar.')
+    }
     return { group, members, expenses, splits, settlements }
   }
 

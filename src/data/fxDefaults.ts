@@ -1,32 +1,29 @@
-import type { Currency } from '../domain/types'
+import { CURRENCIES, type Currency } from '../domain/types'
 
-/** Rough mid-2026 defaults; always editable in the form before saving. */
-const FALLBACK_RATES_TO_EUR: Record<Currency, number> = {
-  EUR: 1,
-  CZK: 0.04,
-  MXN: 0.05,
-  USD: 0.92,
-  CHF: 1.07,
+// Include the base so previous EUR rates are never reused as MXN rates.
+const RATE_KEY = (currency: Currency, base: Currency) => `roadtrip.fxRate.v2.${base}.${currency}`
+const LAST_CURRENCY_KEY = (base: Currency) => `roadtrip.lastCurrency.v2.${base}`
+
+export function getDefaultFxRate(currency: Currency, base: Currency): number | null {
+  if (currency === base) return 1
+  try {
+    const parsed = Number(localStorage.getItem(RATE_KEY(currency, base)))
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  } catch { return null }
 }
 
-const RATE_KEY = (currency: Currency) => `roadtrip.fxRate.${currency}`
-const LAST_CURRENCY_KEY = 'roadtrip.lastCurrency'
-
-/** Last rate the user typed for this currency, falling back to a rough default. */
-export function getDefaultFxRate(currency: Currency): number {
-  const stored = localStorage.getItem(RATE_KEY(currency))
-  const parsed = stored === null ? NaN : Number(stored)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : FALLBACK_RATES_TO_EUR[currency]
+export function rememberFxRate(currency: Currency, base: Currency, rate: number): void {
+  if (!Number.isFinite(rate) || rate <= 0) return
+  try { localStorage.setItem(RATE_KEY(currency, base), String(rate)) } catch { /* Optional preference. */ }
 }
 
-export function rememberFxRate(currency: Currency, rate: number): void {
-  localStorage.setItem(RATE_KEY(currency), String(rate))
+export function getLastCurrency(base: Currency): Currency | null {
+  try {
+    const value = localStorage.getItem(LAST_CURRENCY_KEY(base))
+    return CURRENCIES.find((currency) => currency === value) ?? null
+  } catch { return null }
 }
 
-export function getLastCurrency(): Currency | null {
-  return localStorage.getItem(LAST_CURRENCY_KEY) as Currency | null
-}
-
-export function rememberLastCurrency(currency: Currency): void {
-  localStorage.setItem(LAST_CURRENCY_KEY, currency)
+export function rememberLastCurrency(currency: Currency, base: Currency): void {
+  try { localStorage.setItem(LAST_CURRENCY_KEY(base), currency) } catch { /* Optional preference. */ }
 }
