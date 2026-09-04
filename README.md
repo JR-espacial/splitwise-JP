@@ -15,15 +15,15 @@ backend, deploy en Vercel.
   configuradas y publica el contenido de `dist/` junto con `vercel.json`
   en el mismo proyecto de Vercel.
 - En Supabase, configura la URL del sitio y la URL de redirección de Auth
-  como `https://splitwise-jp.vercel.app` para los enlaces mágicos.
+  como `https://splitwise-jp.vercel.app` para la autenticación.
   Verificado en el panel de Supabase: Site URL y Redirect URLs incluyen
   `https://splitwise-jp.vercel.app/`.
 
 ## Setup
 
-### Acceso con Google o enlace mágico
+### Acceso con Google o código por correo
 
-La versión pública permite elegir Google o un enlace mágico enviado por correo. Google Cloud tiene el
+La versión pública permite elegir Google o un código de seis dígitos enviado por correo. Google Cloud tiene el
 proyecto `roadtrip-europa-2026`, cliente web y audiencia en producción.
 Las credenciales están guardadas en Supabase y el panel muestra Google habilitado.
 La actualización se publicó en Vercel el 3 de septiembre de 2026.
@@ -61,8 +61,10 @@ completo de un integrante desde su celular.
 
    (O con la CLI: `supabase link --project-ref <ref> && supabase db push`.)
 
-2. **Auth (magic links)**: en el dashboard, *Authentication → Sign In /
-   Providers*, habilita **Email** (sin contraseña basta el enlace mágico). En
+2. **Auth (código por correo)**: en el dashboard, *Authentication → Sign In /
+   Providers*, habilita **Email**. En *Authentication → Email Templates → Magic Link*,
+   usa el contenido de `supabase/templates/magic_link.html`, que muestra
+   `{{ .Token }}` como código de seis dígitos. En
    *Authentication → URL Configuration* pon como *Site URL* tu dominio de
    Vercel y agrega `http://localhost:5173` a *Redirect URLs* para desarrollo.
    Solo los correos listados en `members` pueden usar la app (RLS).

@@ -18,10 +18,18 @@ export async function signInWithGoogle(): Promise<void> {
   if (error) throw error
 }
 
-export async function sendMagicLink(email: string): Promise<void> {
+export async function sendEmailCode(email: string): Promise<void> {
   const { error } = await getSupabase().auth.signInWithOtp({
     email: email.trim().toLowerCase(),
-    options: { emailRedirectTo: `${window.location.origin}/` },
+  })
+  if (error) throw error
+}
+
+export async function verifyEmailCode(email: string, code: string): Promise<void> {
+  const { error } = await getSupabase().auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: code.trim(),
+    type: 'email',
   })
   if (error) throw error
 }

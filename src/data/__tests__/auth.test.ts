@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { sendMagicLink, signInWithGoogle } from '../auth'
+import { sendEmailCode, signInWithGoogle, verifyEmailCode } from '../auth'
 
-const { oauth, otp } = vi.hoisted(() => ({ oauth: vi.fn(), otp: vi.fn() }))
+const { oauth, otp, verifyOtp } = vi.hoisted(() => ({ oauth: vi.fn(), otp: vi.fn(), verifyOtp: vi.fn() }))
 vi.mock('../supabaseClient', () => ({
-  getSupabase: () => ({ auth: { signInWithOAuth: oauth, signInWithOtp: otp } }),
+  getSupabase: () => ({ auth: { signInWithOAuth: oauth, signInWithOtp: otp, verifyOtp } }),
 }))
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks() })
 
@@ -28,14 +28,12 @@ describe('Google sign-in', () => {
   })
 })
 
-describe('Magic-link sign-in', () => {
-  it('normalizes the email and returns to the hosted app root', async () => {
-    vi.stubGlobal('window', { location: { origin: 'https://splitwise-jp.vercel.app' } })
+describe('Email-code sign-in', () => {
+  it('normalizes the email when requesting a code', async () => {
     otp.mockResolvedValue({ error: null })
-    await sendMagicLink('  Paulina@Example.com ')
+    await sendEmailCode('  Paulina@Example.com ')
     expect(otp).toHaveBeenCalledWith({
       email: 'paulina@example.com',
-      options: { emailRedirectTo: 'https://splitwise-jp.vercel.app/' },
     })
   })
 
@@ -43,6 +41,22 @@ describe('Magic-link sign-in', () => {
     vi.stubGlobal('window', { location: { origin: 'https://splitwise-jp.vercel.app' } })
     const error = new Error('Email unavailable')
     otp.mockResolvedValue({ error })
-    await expect(sendMagicLink('paulina@example.com')).rejects.toBe(error)
+    await expect(sendEmailCode('paulina@example.com')).rejects.toBe(error)
+  })
+
+  it('verifies the code inside the current app context', async () => {
+    verifyOtp.mockResolvedValue({ error: null })
+    await verifyEmailCode(' Paulina@Example.com ', ' 123456 ')
+    expect(verifyOtp).toHaveBeenCalledWith({
+      email: 'paulina@example.com',
+      token: '123456',
+      type: 'email',
+    })
+  })
+
+  it('reports an invalid or expired code', async () => {
+    const error = new Error('Token expired')
+    verifyOtp.mockResolvedValue({ error })
+    await expect(verifyEmailCode('paulina@example.com', '123456')).rejects.toBe(error)
   })
 })

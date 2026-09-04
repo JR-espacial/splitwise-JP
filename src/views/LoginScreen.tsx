@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Icon } from '../ui/Icon'
-import { sendMagicLink, signInWithGoogle } from '../data/auth'
+import { sendEmailCode, signInWithGoogle, verifyEmailCode } from '../data/auth'
 
 export function LoginScreen() {
   const [googleBusy, setGoogleBusy] = useState(false)
   const [emailBusy, setEmailBusy] = useState(false)
   const [email, setEmail] = useState('')
   const [sentTo, setSentTo] = useState<string | null>(null)
+  const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.hash.slice(1))
     return params.has('error') || params.has('error_code')
@@ -26,7 +27,7 @@ export function LoginScreen() {
     }
   }
 
-  const handleMagicLink = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSendCode = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (googleBusy || emailBusy) return
     const normalizedEmail = email.trim().toLowerCase()
@@ -36,11 +37,25 @@ export function LoginScreen() {
     setError(null)
     setSentTo(null)
     try {
-      await sendMagicLink(normalizedEmail)
+      await sendEmailCode(normalizedEmail)
       setSentTo(normalizedEmail)
     } catch {
-      setError('No se pudo enviar el enlace. Revisa el correo y tu conexión e intenta de nuevo.')
+      setError('No se pudo enviar el código. Revisa el correo y tu conexión e intenta de nuevo.')
     } finally {
+      setEmailBusy(false)
+    }
+  }
+
+  const handleVerifyCode = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!sentTo || code.length !== 6 || googleBusy || emailBusy) return
+
+    setEmailBusy(true)
+    setError(null)
+    try {
+      await verifyEmailCode(sentTo, code)
+    } catch {
+      setError('El código no es válido o ya venció. Revísalo e intenta nuevamente.')
       setEmailBusy(false)
     }
   }
@@ -77,7 +92,7 @@ export function LoginScreen() {
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 
-        <form className="flex flex-col gap-3" onSubmit={(event) => void handleMagicLink(event)}>
+        {!sentTo ? <form className="flex flex-col gap-3" onSubmit={(event) => void handleSendCode(event)}>
           <label htmlFor="login-email" className="text-sm font-semibold text-slate-700">
             Correo electrónico
           </label>
@@ -90,7 +105,6 @@ export function LoginScreen() {
             value={email}
             onChange={(event) => {
               setEmail(event.target.value)
-              setSentTo(null)
             }}
             placeholder="tu@correo.com"
             className="min-h-12 rounded-2xl border border-slate-200 bg-surface px-4 text-slate-900 placeholder:text-slate-400"
@@ -100,14 +114,54 @@ export function LoginScreen() {
             disabled={googleBusy || emailBusy || !email.trim()}
             className="min-h-12 rounded-2xl bg-accent-600 px-5 py-3 text-sm font-bold text-on-accent transition active:scale-[0.98] active:bg-accent-700 disabled:opacity-55"
           >
-            {emailBusy ? 'Enviando enlace…' : 'Enviarme un enlace mágico'}
+            {emailBusy ? 'Enviando código…' : 'Enviarme un código'}
           </button>
-        </form>
-
-        {sentTo && (
-          <p role="status" className="rounded-2xl bg-accent-50 px-4 py-3 text-sm leading-relaxed text-accent-ink">
-            Revisa <strong>{sentTo}</strong>. Te enviamos un enlace para entrar.
-          </p>
+        </form> : (
+          <form className="flex flex-col gap-3" onSubmit={(event) => void handleVerifyCode(event)}>
+            <p role="status" className="rounded-2xl bg-accent-50 px-4 py-3 text-sm leading-relaxed text-accent-ink">
+              Enviamos un código de 6 dígitos a <strong>{sentTo}</strong>.
+            </p>
+            <label htmlFor="login-code" className="text-sm font-semibold text-slate-700">
+              Código de acceso
+            </label>
+            <input
+              id="login-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              required
+              autoFocus
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              aria-describedby="code-help"
+              className="min-h-14 rounded-2xl border border-slate-200 bg-surface px-4 text-center text-2xl font-semibold tracking-[0.35em] text-slate-900 placeholder:text-slate-300"
+            />
+            <p id="code-help" className="text-xs leading-relaxed text-slate-500">
+              Regresa a esta app después de consultar tu correo e introduce el código aquí.
+            </p>
+            <button
+              type="submit"
+              disabled={googleBusy || emailBusy || code.length !== 6}
+              className="min-h-12 rounded-2xl bg-accent-600 px-5 py-3 text-sm font-bold text-on-accent transition active:scale-[0.98] active:bg-accent-700 disabled:opacity-55"
+            >
+              {emailBusy ? 'Verificando…' : 'Entrar con el código'}
+            </button>
+            <button
+              type="button"
+              disabled={emailBusy}
+              onClick={() => {
+                setSentTo(null)
+                setCode('')
+                setError(null)
+              }}
+              className="min-h-10 text-sm font-semibold text-accent-ink"
+            >
+              Cambiar correo
+            </button>
+          </form>
         )}
         {error && <p role="alert" className="text-sm font-semibold text-danger">{error}</p>}
         <p className="text-center text-xs leading-relaxed text-slate-500">
