@@ -7,6 +7,17 @@ export interface AuthState {
   session: Session | null
 }
 
+export async function signInWithGoogle(): Promise<void> {
+  const { error } = await getSupabase().auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/`,
+      queryParams: { prompt: 'select_account' },
+    },
+  })
+  if (error) throw error
+}
+
 export async function sendMagicLink(email: string): Promise<void> {
   const { error } = await getSupabase().auth.signInWithOtp({
     email,

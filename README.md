@@ -21,6 +21,33 @@ backend, deploy en Vercel.
 
 ## Setup
 
+### Acceso con Google
+
+La versión pública usa Google como acceso principal. Google Cloud tiene el
+proyecto `roadtrip-europa-2026`, cliente web y audiencia en producción.
+Las credenciales están guardadas en Supabase y el panel muestra Google habilitado.
+La actualización se publicó en Vercel el 3 de septiembre de 2026.
+
+**Proveedor verificado:** `/auth/v1/settings` devuelve `external.google: true`
+y `/auth/v1/authorize` redirige a `accounts.google.com` (HTTP 302).
+El botón de la app publicada abre correctamente el selector de cuentas de Google.
+La configuración de retorno apunta a Vercel. Queda por confirmar el acceso
+completo de un integrante desde su celular.
+
+1. Crear un proyecto de Google Cloud para Roadtrip Europa 2026 y configurar
+   Google Auth Platform con los permisos básicos `openid`, `email` y `profile`.
+2. Crear un cliente OAuth de tipo aplicación web. Origen autorizado:
+   `https://splitwise-jp.vercel.app`. URI de redirección autorizada:
+   `https://rzcclkrbdqbefecfldbs.supabase.co/auth/v1/callback`.
+3. En Supabase → Authentication → Sign In / Providers → Google, guardar
+   el Client ID y Client Secret y habilitar el proveedor. El secreto va solo
+   en Supabase: nunca en Vite, Git ni los archivos publicados.
+4. Conservar `https://splitwise-jp.vercel.app/` en Site URL y Redirect URLs.
+   Los correos de Google deben coincidir con los miembros existentes; RLS
+   continúa limitando el acceso al grupo.
+5. Publicar el nuevo build en el proyecto existente de Vercel y verificar
+   un inicio de sesión completo desde el celular.
+
 1. **Supabase**: crea un proyecto gratis en [supabase.com](https://supabase.com).
    En el *SQL Editor* ejecuta, en orden:
    - `supabase/migrations/0001_initial_schema.sql`

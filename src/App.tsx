@@ -69,6 +69,13 @@ function LedgerApp({ sessionEmail }: { sessionEmail: string }) {
         >
           Reintentar
         </button>
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="min-h-12 rounded-2xl px-6 font-semibold text-slate-700"
+        >
+          Entrar con otra cuenta
+        </button>
       </main>
     )
   }
